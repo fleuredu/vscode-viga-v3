@@ -1,13 +1,13 @@
 """
 VIGGA - Ana Uygulama
-Frameless & yuvarlatılmış panel, akıllı kalite seçici, loading spinner, compact preview
+Frameless & yuvarlatılmış panel, akıllı kalite seçici, loading spinner, iOS tarzı preview
 """
 
 import os
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSpacerItem, QSizePolicy, QHBoxLayout
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtCore import Qt, QPoint, QUrl
+from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from ui_components import *
 from video_downloader import VideoDownloadThread, VideoInfoFetcher, get_available_formats
@@ -27,7 +27,7 @@ class ViggaApp(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(MAIN_WINDOW_STYLE + CARD_STYLE)
-        self.resize(460, 760)
+        self.resize(480, 780)
         self.setWindowIcon(QIcon(icon_path('close.svg')))
 
     def init_ui(self):
@@ -42,7 +42,7 @@ class ViggaApp(QWidget):
         card_layout.setSpacing(16)
 
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(40)
+        shadow.setBlurRadius(36)
         shadow.setOffset(0, 8)
         shadow.setColor(Qt.black)
         self.card.setGraphicsEffect(shadow)
@@ -51,7 +51,6 @@ class ViggaApp(QWidget):
         self.header.close_btn.clicked.connect(self.close)
         card_layout.addWidget(self.header)
 
-        # URL + Spinner
         url_row = QHBoxLayout()
         self.url_input = ModernLineEdit("Paste video URL here")
         self.url_input.textChanged.connect(self.on_url_changed)
@@ -120,7 +119,7 @@ class ViggaApp(QWidget):
 
     def on_info_ready(self, info):
         self.spinner.stop()
-        self.preview.set_video_info(info['title'], info['channel'], info['thumbnail'])
+        self.preview.set_video_info(info['title'], info['channel'], info['thumbnail'], info.get('description',''))
         self.resolution_combo.set_quality_options(info['quality_options'])
         self.status_bar.set_status("Ready")
 

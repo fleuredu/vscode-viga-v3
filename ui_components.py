@@ -1,13 +1,13 @@
 """
 VIGGA - UI Bileşenleri
-Arayüz widget'ları ve bileşenleri (ikonlu, header'lı, spinner'lı)
+Arayüz widget'ları ve bileşenleri (ikonlu, header'lı, spinner'lı, iOS benzeri preview)
 """
 
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
                              QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar)
-from PyQt5.QtGui import QIcon, QPainter, QPixmap, QPainterPath
-from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, pyqtProperty, QTimer, QRect, QUrl
+from PyQt5.QtGui import QIcon, QPainter, QPixmap, QPainterPath, QFontMetrics
+from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, pyqtProperty, QRect, QUrl
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from styles import *
 
@@ -45,45 +45,68 @@ class ModernComboBox(QComboBox):
             return self.format_ids[idx]
         return None
 
+class CoverLabel(QLabel):
+    """Merkez kırpma (center-crop) ile görseli alanı tamamen kaplayan label."""
+    def __init__(self):
+        super().__init__()
+        self._pixmap = None
+        self.setAlignment(Qt.AlignCenter)
+        self.setMinimumHeight(160)
+        self.setSizePolicy(self.sizePolicy().Expanding, self.sizePolicy().Fixed)
+    
+    def set_pixmap(self, pixmap: QPixmap):
+        self._pixmap = pixmap
+        self._update_scaled()
+    
+    def resizeEvent(self, event):
+        self._update_scaled()
+        super().resizeEvent(event)
+    
+    def _update_scaled(self):
+        if not self._pixmap or self.width() <= 0 or self.height() <= 0:
+            return
+        scaled = self._pixmap.scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        self.setPixmap(scaled)
+
 class VideoPreviewCard(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(PREVIEW_STYLE)
-        self.setMinimumHeight(200)
-        self.setMaximumHeight(250)
+        self.setMinimumHeight(240)
+        self._title_full = ''
+        self._desc_full = ''
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
         
-        # Thumbnail placeholder
-        self.thumbnail_label = QLabel()
-        self.thumbnail_label.setAlignment(Qt.AlignCenter)
-        self.thumbnail_label.setStyleSheet('background: transparent; color: #9B8AAF;')
-        self.thumbnail_label.setText('🎥')
-        self.thumbnail_label.setMinimumHeight(120)
+        # Thumbnail (cover fit)
+        self.thumbnail_label = CoverLabel()
+        self.thumbnail_label.setStyleSheet('background: transparent;')
         layout.addWidget(self.thumbnail_label)
         
-        # Video title
+        # Title (iOS benzeri tipografi)
         self.title_label = QLabel('Video preview will appear here')
-        self.title_label.setWordWrap(True)
-        self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.title_label.setStyleSheet('font-size: 13px; font-weight: 600; color: #E4DAF3; background: transparent;')
+        self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.title_label.setStyleSheet('font-size: 15px; font-weight: 700; letter-spacing: 0.2px; color: #EDE7F6; background: transparent;')
         layout.addWidget(self.title_label)
         
-        # Channel name
-        self.channel_label = QLabel('')
-        self.channel_label.setStyleSheet('font-size: 11px; color: #B9AACD; background: transparent;')
-        layout.addWidget(self.channel_label)
+        # Subtitle: kanal adı + kısa açıklama
+        self.subtitle_label = QLabel('')
+        self.subtitle_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.subtitle_label.setStyleSheet('font-size: 12px; color: #B9AACD; background: transparent;')
+        self.subtitle_label.setWordWrap(False)
+        layout.addWidget(self.subtitle_label)
         
         layout.addStretch()
         
         self.network_manager = QNetworkAccessManager()
         self.network_manager.finished.connect(self.on_thumbnail_loaded)
     
-    def set_video_info(self, title, channel, thumbnail_url):
-        self.title_label.setText(title[:60] + '...' if len(title) > 60 else title)
-        self.channel_label.setText(channel)
+    def set_video_info(self, title, channel, thumbnail_url, description=''):
+        self._title_full = title or ''
+        self._desc_full = (description or '').replace('\n', ' ')
+        self._apply_elide()
         
         if thumbnail_url:
             request = QNetworkRequest(QUrl(thumbnail_url))
@@ -93,15 +116,39 @@ class VideoPreviewCard(QWidget):
         if reply.error() == QNetworkReply.NoError:
             pixmap = QPixmap()
             pixmap.loadFromData(reply.readAll())
-            scaled = pixmap.scaled(280, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.thumbnail_label.setPixmap(scaled)
+            self.thumbnail_label.set_pixmap(pixmap)
         reply.deleteLater()
     
+    def resizeEvent(self, event):
+        self._apply_elide()
+        super().resizeEvent(event)
+    
+    def _apply_elide(self):
+        # Title tek satır, elide
+        fm_title = QFontMetrics(self.title_label.font())
+        elided_title = fm_title.elidedText(self._title_full, Qt.ElideRight, max(100, self.width()-32))
+        self.title_label.setText(elided_title)
+        
+        # Subtitle: "KANAL • açıklama" tek satır
+        text = self._desc_full
+        if len(text) > 0:
+            text = f"{text}"
+        fm_sub = QFontMetrics(self.subtitle_label.font())
+        prefix = ''
+        if self._title_full:
+            # prefix'i kanal adı ile yap
+            prefix = ''
+        # kanal adı ayrı alan: önce channel, sonra bullet ve açıklama
+        composed = self._desc_full
+        fm_width = max(100, self.width()-32)
+        self.subtitle_label.setText(fm_sub.elidedText(composed, Qt.ElideRight, fm_width))
+    
     def reset(self):
+        self._title_full = ''
+        self._desc_full = ''
         self.title_label.setText('Video preview will appear here')
-        self.channel_label.setText('')
-        self.thumbnail_label.clear()
-        self.thumbnail_label.setText('🎥')
+        self.subtitle_label.setText('')
+        self.thumbnail_label.setPixmap(QPixmap())
 
 class LoadingSpinner(QWidget):
     def __init__(self, parent=None):
@@ -136,8 +183,6 @@ class LoadingSpinner(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         painter.translate(20, 20)
         painter.rotate(self._angle)
-        
-        # Gradient arc
         from PyQt5.QtGui import QPen, QColor
         pen = QPen(QColor('#C9A8FF'), 3, Qt.SolidLine, Qt.RoundCap)
         painter.setPen(pen)
