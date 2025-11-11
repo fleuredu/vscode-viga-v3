@@ -33,7 +33,6 @@ def run(cmd, cwd, capture=False, env=None):
         return proc.returncode, proc.stdout, dt
     return proc.returncode, None, dt
 
-
 def print_section(title):
     print(f"\n=== {title} ===")
 
@@ -60,16 +59,6 @@ def main():
     print_section('Status')
     code, out, ms = run(['git', 'status', '-sb'], repo_root, capture=True, env=env)
     print(out, end='')
-
-    # Remote info
-    print_section('Remote')
-    code, out, ms = run(['git', 'remote', '-v'], repo_root, capture=True, env=env)
-    print(out, end='')
-
-    # Fetch
-    print_section('Fetch --all --prune')
-    code, out, ms = run(['git', 'fetch', '--all', '--prune'], repo_root, capture=True, env=env)
-    print(out or '(no output)', f'({int(ms)} ms)')
     if code != 0:
         sys.exit(code)
 
