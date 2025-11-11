@@ -1,13 +1,13 @@
 """
 VIGGA - Ana Uygulama
-Frameless & yuvarlatılmış panel, ikonlu başlık ve status bar
+Frameless & yuvarlatılmış panel, akıllı kalite seçici, loading spinner, compact preview
 """
 
 import os
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSpacerItem, QSizePolicy, QHBoxLayout
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QUrl
 from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from ui_components import *
 from video_downloader import VideoDownloadThread, VideoInfoFetcher, get_available_formats
@@ -35,35 +35,35 @@ class ViggaApp(QWidget):
         outer.setContentsMargins(18, 18, 18, 18)
         outer.setSpacing(0)
 
-        # Card container
         self.card = QWidget()
         self.card.setObjectName('Card')
         card_layout = QVBoxLayout(self.card)
         card_layout.setContentsMargins(20, 20, 20, 20)
         card_layout.setSpacing(16)
 
-        # Shadow glow
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(40)
         shadow.setOffset(0, 8)
         shadow.setColor(Qt.black)
         self.card.setGraphicsEffect(shadow)
 
-        # Header bar
         self.header = HeaderBar()
         self.header.close_btn.clicked.connect(self.close)
         card_layout.addWidget(self.header)
 
-        # URL Input
+        # URL + Spinner
+        url_row = QHBoxLayout()
         self.url_input = ModernLineEdit("Paste video URL here")
         self.url_input.textChanged.connect(self.on_url_changed)
-        card_layout.addWidget(self.url_input)
+        url_row.addWidget(self.url_input)
+        self.spinner = LoadingSpinner()
+        self.spinner.hide()
+        url_row.addWidget(self.spinner)
+        card_layout.addLayout(url_row)
 
-        # Preview
-        self.preview = PreviewWidget()
+        self.preview = VideoPreviewCard()
         card_layout.addWidget(self.preview)
 
-        # Format
         format_label = QLabel("Format")
         format_label.setStyleSheet(LABEL_STYLE)
         card_layout.addWidget(format_label)
@@ -72,24 +72,20 @@ class ViggaApp(QWidget):
             self.format_combo.addItem(fmt)
         card_layout.addWidget(self.format_combo)
 
-        # Resolution
         resolution_label = QLabel("Resolution")
         resolution_label.setStyleSheet(LABEL_STYLE)
         card_layout.addWidget(resolution_label)
         self.resolution_combo = ModernComboBox()
-        self.resolution_combo.addItem("Resolution")
+        self.resolution_combo.addItem("Select quality")
         card_layout.addWidget(self.resolution_combo)
 
-        # Progress
         self.progress_widget = ProgressWidget()
         card_layout.addWidget(self.progress_widget)
 
-        # Download Button
         self.download_btn = PrimaryButton("Download")
         self.download_btn.clicked.connect(self.start_download)
         card_layout.addWidget(self.download_btn)
 
-        # Spacer & StatusBar
         card_layout.addSpacerItem(QSpacerItem(20, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.status_bar = StatusBar()
         self.status_bar.folder_btn.clicked.connect(self.open_folder)
@@ -98,7 +94,6 @@ class ViggaApp(QWidget):
 
         outer.addWidget(self.card)
 
-    # Window drag for frameless
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
@@ -112,34 +107,41 @@ class ViggaApp(QWidget):
 
     def on_url_changed(self, url):
         if url and len(url) > 10:
-            self.status_bar.set_status("Fetching info...")
+            self.status_bar.set_status("Fetching...")
+            self.spinner.start()
             self.info_thread = VideoInfoFetcher(url)
             self.info_thread.info_ready.connect(self.on_info_ready)
+            self.info_thread.progress_update.connect(self.on_fetch_progress)
             self.info_thread.error.connect(self.on_info_error)
             self.info_thread.start()
 
+    def on_fetch_progress(self, percent):
+        pass
+
     def on_info_ready(self, info):
-        self.preview.setText(f"📹 {info['title']}")
-        self.resolution_combo.clear()
-        for res in info['resolutions']:
-            self.resolution_combo.addItem(res)
+        self.spinner.stop()
+        self.preview.set_video_info(info['title'], info['channel'], info['thumbnail'])
+        self.resolution_combo.set_quality_options(info['quality_options'])
         self.status_bar.set_status("Ready")
 
     def on_info_error(self, error):
-        self.status_bar.set_status(f"Error: {error[:30]}")
+        self.spinner.stop()
+        self.status_bar.set_status(f"Error")
 
     def start_download(self):
         url = self.url_input.text()
         if not url:
             self.status_bar.set_status("Please enter a URL")
             return
-        fmt = self.format_combo.currentText()
-        res = self.resolution_combo.currentText()
+        format_id = self.resolution_combo.get_selected_format_id()
+        if not format_id:
+            self.status_bar.set_status("Select quality")
+            return
         self.download_btn.setEnabled(False)
         self.status_bar.set_status("Downloading")
         self.progress_widget.reset()
         self.progress_widget.show()
-        self.download_thread = VideoDownloadThread(url, fmt, res)
+        self.download_thread = VideoDownloadThread(url, format_id)
         self.download_thread.progress.connect(self.on_progress)
         self.download_thread.finished.connect(self.on_download_finished)
         self.download_thread.error.connect(self.on_download_error)
@@ -168,9 +170,9 @@ class ViggaApp(QWidget):
 
     def clear_all(self):
         self.url_input.clear()
-        self.preview.setText("Video preview will appear here")
+        self.preview.reset()
         self.resolution_combo.clear()
-        self.resolution_combo.addItem("Resolution")
+        self.resolution_combo.addItem("Select quality")
         self.progress_widget.reset()
         self.status_bar.set_status("Ready")
 

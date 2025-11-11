@@ -1,13 +1,14 @@
 """
 VIGGA - UI Bileşenleri
-Arayüz widget'ları ve bileşenleri (ikonlu, header'lı)
+Arayüz widget'ları ve bileşenleri (ikonlu, header'lı, spinner'lı)
 """
 
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
                              QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar)
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon, QPainter, QPixmap, QPainterPath
+from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, pyqtProperty, QTimer, QRect
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from styles import *
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,15 +29,119 @@ class ModernComboBox(QComboBox):
         super().__init__()
         self.setStyleSheet(COMBO_STYLE)
         self.setMinimumHeight(45)
+        self.format_ids = []
+    
+    def set_quality_options(self, options):
+        """(label, format_id) tuple listesi ekle"""
+        self.clear()
+        self.format_ids = []
+        for label, fid in options:
+            self.addItem(label)
+            self.format_ids.append(fid)
+    
+    def get_selected_format_id(self):
+        idx = self.currentIndex()
+        if 0 <= idx < len(self.format_ids):
+            return self.format_ids[idx]
+        return None
 
-class PreviewWidget(QLabel):
+class VideoPreviewCard(QWidget):
     def __init__(self):
         super().__init__()
-        self.setText("Video preview will appear here")
-        self.setAlignment(Qt.AlignCenter)
         self.setStyleSheet(PREVIEW_STYLE)
         self.setMinimumHeight(200)
         self.setMaximumHeight(250)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
+        
+        # Thumbnail placeholder
+        self.thumbnail_label = QLabel()
+        self.thumbnail_label.setAlignment(Qt.AlignCenter)
+        self.thumbnail_label.setStyleSheet('background: transparent; color: #9B8AAF;')
+        self.thumbnail_label.setText('🎥')
+        self.thumbnail_label.setMinimumHeight(120)
+        layout.addWidget(self.thumbnail_label)
+        
+        # Video title
+        self.title_label = QLabel('Video preview will appear here')
+        self.title_label.setWordWrap(True)
+        self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.title_label.setStyleSheet('font-size: 13px; font-weight: 600; color: #E4DAF3; background: transparent;')
+        layout.addWidget(self.title_label)
+        
+        # Channel name
+        self.channel_label = QLabel('')
+        self.channel_label.setStyleSheet('font-size: 11px; color: #B9AACD; background: transparent;')
+        layout.addWidget(self.channel_label)
+        
+        layout.addStretch()
+        
+        self.network_manager = QNetworkAccessManager()
+        self.network_manager.finished.connect(self.on_thumbnail_loaded)
+    
+    def set_video_info(self, title, channel, thumbnail_url):
+        self.title_label.setText(title[:60] + '...' if len(title) > 60 else title)
+        self.channel_label.setText(channel)
+        
+        if thumbnail_url:
+            request = QNetworkRequest(QUrl(thumbnail_url))
+            self.network_manager.get(request)
+    
+    def on_thumbnail_loaded(self, reply):
+        if reply.error() == QNetworkReply.NoError:
+            pixmap = QPixmap()
+            pixmap.loadFromData(reply.readAll())
+            scaled = pixmap.scaled(280, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.thumbnail_label.setPixmap(scaled)
+        reply.deleteLater()
+    
+    def reset(self):
+        self.title_label.setText('Video preview will appear here')
+        self.channel_label.setText('')
+        self.thumbnail_label.clear()
+        self.thumbnail_label.setText('🎥')
+
+class LoadingSpinner(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(40, 40)
+        self._angle = 0
+        self.animation = QPropertyAnimation(self, b"angle")
+        self.animation.setStartValue(0)
+        self.animation.setEndValue(360)
+        self.animation.setLoopCount(-1)
+        self.animation.setDuration(1000)
+    
+    @pyqtProperty(int)
+    def angle(self):
+        return self._angle
+    
+    @angle.setter
+    def angle(self, value):
+        self._angle = value
+        self.update()
+    
+    def start(self):
+        self.animation.start()
+        self.show()
+    
+    def stop(self):
+        self.animation.stop()
+        self.hide()
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.translate(20, 20)
+        painter.rotate(self._angle)
+        
+        # Gradient arc
+        from PyQt5.QtGui import QPen, QColor
+        pen = QPen(QColor('#C9A8FF'), 3, Qt.SolidLine, Qt.RoundCap)
+        painter.setPen(pen)
+        painter.drawArc(-15, -15, 30, 30, 0, 270 * 16)
 
 class PrimaryButton(QPushButton):
     def __init__(self, text=""):
