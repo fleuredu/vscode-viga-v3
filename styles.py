@@ -1,6 +1,6 @@
 """
 VIGGA - Stil Tanımlamaları
-Modern, glassmorphism tarzı arayüz stilleri + frameless pencere desteği
+Progress bar: yuvarlatılmış köşeler ve ince fetch bar desteği
 """
 
 RADIUS = 20
@@ -21,7 +21,7 @@ COLORS = {
 
 MAIN_WINDOW_STYLE = f"""
     QWidget {{
-        background: transparent; /* Frameless için */
+        background: transparent;
         color: {COLORS['text_primary']};
         font-family: {FONT_FAMILY};
     }}
@@ -123,43 +123,31 @@ ICON_BUTTON_STYLE = f"""
 """
 
 HEADER_STYLE = f"""
-    QWidget#Header {{
-        background: transparent;
-    }}
-    QLabel#Title {{
-        color: {COLORS['text_primary']};
-        font-size: 16px;
-        font-weight: 700;
-    }}
+    QWidget#Header {{ background: transparent; }}
+    QLabel#Title {{ color: {COLORS['text_primary']}; font-size: 16px; font-weight: 700; }}
 """
 
+# Yuvarlak progress bar
 PROGRESS_STYLE = f"""
     QProgressBar {{
         background: {COLORS['surface']};
         border: none;
-        border-radius: 10px;
+        border-radius: 12px;
         height: 10px;
+        padding: 2px; /* chunk'ın yuvarlak görünmesi için iç boşluk */
         text-align: center;
     }}
     QProgressBar::chunk {{
         background: {COLORS['progress']};
-        border-radius: 10px;
+        border-radius: 10px; /* bar radius - padding kadar küçük */
+        margin: 0px; /* kesintisiz şerit */
     }}
 """
 
 STATUS_LABEL_STYLE = f"""
-    QLabel {{
-        color: {COLORS['text_secondary']};
-        font-size: 12px;
-        background: transparent;
-    }}
+    QLabel {{ color: {COLORS['text_secondary']}; font-size: 12px; background: transparent; }}
 """
 
 LABEL_STYLE = f"""
-    QLabel {{
-        color: {COLORS['text_primary']};
-        font-size: 13px;
-        font-weight: 500;
-        background: transparent;
-    }}
+    QLabel {{ color: {COLORS['text_primary']}; font-size: 13px; font-weight: 500; background: transparent; }}
 """

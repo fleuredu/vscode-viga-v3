@@ -1,17 +1,17 @@
 """
 VIGGA - Ana Uygulama
-Panel genişlemesini önle: sabit pencere boyutu, URL satırı stretch ayarı
+Fetch için ince indeterminate bar; hız/MB bilgisi progress satırında
 """
 
 import os
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSpacerItem, QSizePolicy, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSpacerItem, QSizePolicy, QHBoxLayout, QProgressBar
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from ui_components import *
 from video_downloader import VideoDownloadThread, VideoInfoFetcher, get_available_formats
-from styles import MAIN_WINDOW_STYLE, CARD_STYLE, COLORS, RADIUS
+from styles import MAIN_WINDOW_STYLE, CARD_STYLE, COLORS, RADIUS, PROGRESS_STYLE
 
 class ViggaApp(QWidget):
     def __init__(self):
@@ -27,7 +27,6 @@ class ViggaApp(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(MAIN_WINDOW_STYLE + CARD_STYLE)
-        # Pencere genişlemesini engellemek için sabitle
         self.setFixedSize(480, 780)
         self.setWindowIcon(QIcon(icon_path('close.svg')))
 
@@ -52,24 +51,27 @@ class ViggaApp(QWidget):
         self.header.close_btn.clicked.connect(self.close)
         card_layout.addWidget(self.header)
 
-        # URL satırı (input + spinner)
         url_row = QHBoxLayout()
         url_row.setSpacing(8)
         self.url_input = ModernLineEdit("Paste video URL here")
-        # Genişleme politikasını sınırlıyoruz
         self.url_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.url_input.textChanged.connect(self.on_url_changed)
-        url_row.addWidget(self.url_input, 1)  # input genişler
-
+        url_row.addWidget(self.url_input, 1)
         self.spinner = LoadingSpinner()
-        self.spinner.setFixedSize(28, 28)     # sabit boy, layout'u bozmasın
+        self.spinner.setFixedSize(28, 28)
         self.spinner.hide()
-        url_row.addWidget(self.spinner, 0)    # spinner genişlemesin
-
-        # Stretch oranlarını sabitle
+        url_row.addWidget(self.spinner, 0)
         url_row.setStretch(0, 1)
         url_row.setStretch(1, 0)
         card_layout.addLayout(url_row)
+
+        # İnce fetch bar (indeterminate)
+        self.fetch_bar = QProgressBar()
+        self.fetch_bar.setStyleSheet(PROGRESS_STYLE)
+        self.fetch_bar.setTextVisible(False)
+        self.fetch_bar.setFixedHeight(6)
+        self.fetch_bar.hide()
+        card_layout.addWidget(self.fetch_bar)
 
         self.preview = VideoPreviewCard()
         card_layout.addWidget(self.preview)
@@ -117,22 +119,24 @@ class ViggaApp(QWidget):
 
     def on_url_changed(self, url):
         if url and len(url) > 10:
-            self.status_bar.set_status("Fetching...")
-            self.spinner.start()
+            self.status_bar.set_status("Fetching…")
+            self.fetch_bar.setRange(0, 0)  # indeterminate
+            self.fetch_bar.show()
+            self.spinner.hide()  # URL satırını kapatmasın
             self.info_thread = VideoInfoFetcher(url)
             self.info_thread.info_ready.connect(self.on_info_ready)
             self.info_thread.error.connect(self.on_info_error)
             self.info_thread.start()
 
     def on_info_ready(self, info):
-        self.spinner.stop()
+        self.fetch_bar.hide()
         self.preview.set_video_info(info['title'], info['channel'], info['thumbnail'])
         self.resolution_combo.set_quality_options(info['quality_options'])
         self.status_bar.set_status("Ready")
 
     def on_info_error(self, error):
-        self.spinner.stop()
-        self.status_bar.set_status(f"Error")
+        self.fetch_bar.hide()
+        self.status_bar.set_status("Error")
 
     def start_download(self):
         url = self.url_input.text()
@@ -147,11 +151,11 @@ class ViggaApp(QWidget):
         self.status_bar.set_status("Downloading")
         self.progress_widget.reset()
         self.progress_widget.show()
-        self.download_thread = VideoDownloadThread(url, format_id)
-        self.download_thread.progress.connect(self.on_progress)
-        self.download_thread.finished.connect(self.on_download_finished)
-        self.download_thread.error.connect(self.on_download_error)
-        self.download_thread.start()
+        self.down_thread = VideoDownloadThread(url, format_id)
+        self.down_thread.progress.connect(self.on_progress)
+        self.down_thread.finished.connect(self.on_download_finished)
+        self.down_thread.error.connect(self.on_download_error)
+        self.down_thread.start()
 
     def on_progress(self, value, text):
         self.progress_widget.update_progress(value, text)
@@ -166,7 +170,7 @@ class ViggaApp(QWidget):
 
     def open_folder(self):
         import subprocess
-        path = os.path.abspath(".")
+        path = os.path.abspath('.')
         if sys.platform == 'win32':
             os.startfile(path)
         elif sys.platform == 'darwin':
@@ -189,5 +193,5 @@ def main():
     window.show()
     sys.exit(app.exec_())
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
