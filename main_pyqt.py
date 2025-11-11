@@ -1,4 +1,3 @@
-# merhaba başardım anne
 
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit
