@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Verbose git pull script for VS Code.
+"""Robust and verbose git pull script for VS Code.
 - Prints each step and command duration
 - Shows current branch, remote, ahead/behind, and uncommitted changes
+- Stashes local changes before pulling
+- Pops stash after pull if needed
 - Debug flags: GIT_TRACE=1 and GIT_CURL_VERBOSE=1 when --debug
 Usage:
     python git_pull.py [--debug]
@@ -16,7 +18,6 @@ ENV.setdefault('GIT_TERMINAL_PROMPT', '0')
 ENV.setdefault('LC_ALL', 'C')
 ENV.setdefault('LANG', 'C')
 
-
 def run(cmd, cwd, capture=False, env=None):
     t0 = time.time()
     proc = subprocess.run(
@@ -26,7 +27,7 @@ def run(cmd, cwd, capture=False, env=None):
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.STDOUT if capture else None,
         text=True,
-        check=False,
+        check=False
     )
     dt = (time.time() - t0) * 1000
     if capture:
@@ -35,7 +36,6 @@ def run(cmd, cwd, capture=False, env=None):
 
 def print_section(title):
     print(f"\n=== {title} ===")
-
 
 def main():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -62,6 +62,18 @@ def main():
     if code != 0:
         sys.exit(code)
 
+    # Remote info
+    print_section('Remote')
+    code, out, ms = run(['git', 'remote', '-v'], repo_root, capture=True, env=env)
+    print(out, end='')
+
+    # Fetch
+    print_section('Fetch --all --prune')
+    code, out, ms = run(['git', 'fetch', '--all', '--prune'], repo_root, capture=True, env=env)
+    print(out or '(no output)', f'({int(ms)} ms)')
+    if code != 0:
+        sys.exit(code)
+
     # Stash if needed
     print_section('Stash (include untracked)')
     code, out, ms = run(['git', 'stash', '--include-untracked'], repo_root, capture=True, env=env)
@@ -83,7 +95,6 @@ def main():
         print(out, f'({int(ms)} ms)')
 
     print('\nDone.')
-
 
 if __name__ == '__main__':
     main()
