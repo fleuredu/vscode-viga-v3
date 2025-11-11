@@ -58,6 +58,11 @@ class CoverLabel(QLabel):
         self._pixmap = pixmap
         self._update_scaled()
     
+    def clear_pixmap(self):
+        """Thumbnail'ı tamamen temizle"""
+        self._pixmap = None
+        self.clear()
+    
     def resizeEvent(self, event):
         self._update_scaled()
         super().resizeEvent(event)
@@ -129,10 +134,11 @@ class VideoPreviewCard(QWidget):
         self.title_label.setText(elided_title)
     
     def reset(self):
+        """Preview'ı tamamen sıfırla - thumbnail dahil"""
         self._title_full = ''
         self.title_label.setText('Video preview will appear here')
         self.channel_label.setText('')
-        self.thumbnail_label.setPixmap(QPixmap())
+        self.thumbnail_label.clear_pixmap()
 
 class LoadingSpinner(QWidget):
     def __init__(self, parent=None):
