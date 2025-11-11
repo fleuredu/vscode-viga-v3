@@ -7,8 +7,8 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
                              QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar)
 from PyQt5.QtGui import QIcon, QPainter, QPixmap, QPainterPath
-from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, pyqtProperty, QTimer, QRect
-from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, pyqtProperty, QTimer, QRect, QUrl
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from styles import *
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

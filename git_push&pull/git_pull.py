@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Silent git pull script.
-- No logs written to files or console unless there is an error.
+"""Robust silent git pull script.
+- Works from any location
+- Avoids terminal prompts
+- Silent unless error occurs
 """
 import os
 import subprocess
@@ -8,23 +10,23 @@ import sys
 
 ENV = os.environ.copy()
 ENV.setdefault('GIT_TERMINAL_PROMPT', '0')
+ENV.setdefault('LC_ALL', 'C')
+ENV.setdefault('LANG', 'C')
 
 DEVNULL = subprocess.DEVNULL
 
 
-def run(cmd, cwd=None):
+def run(cmd, cwd):
     subprocess.run(cmd, cwd=cwd, env=ENV, stdout=DEVNULL, stderr=DEVNULL, check=True)
 
 
 def main():
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.abspath(os.path.join(repo_dir, '..'))
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     try:
-        run(['git', 'fetch', '--all'], cwd=repo_root)
+        run(['git', 'rev-parse', '--is-inside-work-tree'], cwd=repo_root)
+        run(['git', 'fetch', '--all', '--prune'], cwd=repo_root)
         run(['git', 'pull', '--rebase', 'origin', 'main'], cwd=repo_root)
-        print('git_pull: başarıyla güncellendi!')
     except subprocess.CalledProcessError:
-        # On error, print minimal message to help debugging
         print('git_pull: operation failed', file=sys.stderr)
         sys.exit(1)
 
