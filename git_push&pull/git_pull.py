@@ -1,40 +1,99 @@
 #!/usr/bin/env python3
-"""Robust silent git pull script.
-- Works from any location
-- Avoids terminal prompts
-- Silent unless error occurs
+"""Verbose git pull script for VS Code.
+- Prints each step and command duration
+- Shows current branch, remote, ahead/behind, and uncommitted changes
+- Debug flags: GIT_TRACE=1 and GIT_CURL_VERBOSE=1 when --debug
+Usage:
+    python git_pull.py [--debug]
 """
 import os
 import subprocess
 import sys
+import time
 
 ENV = os.environ.copy()
 ENV.setdefault('GIT_TERMINAL_PROMPT', '0')
 ENV.setdefault('LC_ALL', 'C')
 ENV.setdefault('LANG', 'C')
 
-DEVNULL = subprocess.DEVNULL
+
+def run(cmd, cwd, capture=False, env=None):
+    t0 = time.time()
+    proc = subprocess.run(
+        cmd,
+        cwd=cwd,
+        env=env or ENV,
+        stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.STDOUT if capture else None,
+        text=True,
+        check=False,
+    )
+    dt = (time.time() - t0) * 1000
+    if capture:
+        return proc.returncode, proc.stdout, dt
+    return proc.returncode, None, dt
 
 
-def run(cmd, cwd):
-    subprocess.run(cmd, cwd=cwd, env=ENV, stdout=DEVNULL, stderr=DEVNULL, check=True)
+def print_section(title):
+    print(f"\n=== {title} ===")
 
 
 def main():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    try:
-        run(['git', 'rev-parse', '--is-inside-work-tree'], cwd=repo_root)
-        run(['git', 'fetch', '--all', '--prune'], cwd=repo_root)
-        # Stash local changes before pulling
-        run(['git', 'stash', '--include-untracked'], cwd=repo_root)
-        run(['git', 'pull', '--rebase', 'origin', 'main'], cwd=repo_root)
-        # Pop the stash if there were changes stashed
-        stash_list = subprocess.run(['git', 'stash', 'list'], cwd=repo_root, env=ENV, stdout=subprocess.PIPE, stderr=DEVNULL)
-        if stash_list.stdout:
-            run(['git', 'stash', 'pop'], cwd=repo_root)
-    except subprocess.CalledProcessError:
-        print('git_pull: operation failed', file=sys.stderr)
+    debug = '--debug' in sys.argv
+    env = ENV.copy()
+    if debug:
+        env['GIT_TRACE'] = '1'
+        env['GIT_CURL_VERBOSE'] = '1'
+    
+    print_section('Repo')
+    print('path:', repo_root)
+
+    # Verify repo
+    code, out, ms = run(['git', 'rev-parse', '--is-inside-work-tree'], repo_root, capture=True, env=env)
+    print('rev-parse:', out.strip(), f'({int(ms)} ms)')
+    if code != 0:
+        print('Not a git repository.')
         sys.exit(1)
+
+    # Status overview
+    print_section('Status')
+    code, out, ms = run(['git', 'status', '-sb'], repo_root, capture=True, env=env)
+    print(out, end='')
+
+    # Remote info
+    print_section('Remote')
+    code, out, ms = run(['git', 'remote', '-v'], repo_root, capture=True, env=env)
+    print(out, end='')
+
+    # Fetch
+    print_section('Fetch --all --prune')
+    code, out, ms = run(['git', 'fetch', '--all', '--prune'], repo_root, capture=True, env=env)
+    print(out or '(no output)', f'({int(ms)} ms)')
+    if code != 0:
+        sys.exit(code)
+
+    # Stash if needed
+    print_section('Stash (include untracked)')
+    code, out, ms = run(['git', 'stash', '--include-untracked'], repo_root, capture=True, env=env)
+    print(out or '(no changes stashed)', f'({int(ms)} ms)')
+
+    # Pull rebase
+    print_section('Pull --rebase origin main')
+    code, out, ms = run(['git', 'pull', '--rebase', 'origin', 'main'], repo_root, capture=True, env=env)
+    print(out or '(up to date)', f'({int(ms)} ms)')
+    if code != 0:
+        print('Rebase encountered a problem. Resolve conflicts and run again.')
+        sys.exit(code)
+
+    # Stash pop if something was stashed
+    code, out, _ = run(['git', 'stash', 'list'], repo_root, capture=True, env=env)
+    if out.strip():
+        print_section('Stash pop')
+        code, out, ms = run(['git', 'stash', 'pop'], repo_root, capture=True, env=env)
+        print(out, f'({int(ms)} ms)')
+
+    print('\nDone.')
 
 
 if __name__ == '__main__':
