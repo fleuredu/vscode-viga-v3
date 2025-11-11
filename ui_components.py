@@ -1,34 +1,35 @@
 """
 VIGGA - UI Bileşenleri
-Arayüz widget'ları ve bileşenleri
+Arayüz widget'ları ve bileşenleri (ikonlu, header'lı)
 """
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QComboBox, QLineEdit, QProgressBar, QSpacerItem, QSizePolicy)
-from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtCore import Qt, pyqtSignal
+import os
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
+                             QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar)
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt
 from styles import *
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ICON_DIR = os.path.join(BASE_DIR, 'assets', 'icons')
+
+def icon_path(name):
+    return os.path.join(ICON_DIR, name)
 
 class ModernLineEdit(QLineEdit):
-    """Modern stil URL input alanı"""
     def __init__(self, placeholder=""):
         super().__init__()
         self.setPlaceholderText(placeholder)
         self.setStyleSheet(URL_INPUT_STYLE)
         self.setMinimumHeight(45)
 
-
 class ModernComboBox(QComboBox):
-    """Modern stil dropdown menü"""
     def __init__(self):
         super().__init__()
         self.setStyleSheet(COMBO_STYLE)
         self.setMinimumHeight(45)
 
-
 class PreviewWidget(QLabel):
-    """Video önizleme alanı"""
     def __init__(self):
         super().__init__()
         self.setText("Video preview will appear here")
@@ -37,95 +38,82 @@ class PreviewWidget(QLabel):
         self.setMinimumHeight(200)
         self.setMaximumHeight(250)
 
-
 class PrimaryButton(QPushButton):
-    """Ana aksiyon butonu"""
     def __init__(self, text=""):
         super().__init__(text)
         self.setStyleSheet(BUTTON_STYLE)
         self.setMinimumHeight(50)
         self.setCursor(Qt.PointingHandCursor)
 
-
-class IconButton(QPushButton):
-    """İkon butonu (folder, delete vb.)"""
-    def __init__(self, icon_text=""):
-        super().__init__(icon_text)
+class IconButton(QToolButton):
+    def __init__(self, name, tooltip=""):
+        super().__init__()
         self.setStyleSheet(ICON_BUTTON_STYLE)
-        self.setFixedSize(40, 40)
+        self.setIcon(QIcon(icon_path(name)))
+        self.setIconSize(Qt.QSize(18, 18))
+        self.setToolTip(tooltip)
         self.setCursor(Qt.PointingHandCursor)
 
-
 class ProgressWidget(QWidget):
-    """İndirme progress barı"""
     def __init__(self):
         super().__init__()
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
-        
-        # Progress label ve percentage
         info_layout = QHBoxLayout()
         self.progress_label = QLabel("Downloading...")
         self.progress_label.setStyleSheet(LABEL_STYLE)
         self.percentage_label = QLabel("0%")
         self.percentage_label.setStyleSheet(LABEL_STYLE)
         self.percentage_label.setAlignment(Qt.AlignRight)
-        
         info_layout.addWidget(self.progress_label)
         info_layout.addWidget(self.percentage_label)
-        
-        # Progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setStyleSheet(PROGRESS_STYLE)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
-        
         layout.addLayout(info_layout)
         layout.addWidget(self.progress_bar)
-        
-        self.setLayout(layout)
-        self.hide()  # Başlangıçta gizli
-    
+        self.hide()
     def update_progress(self, value, text="Downloading..."):
-        """Progress güncelleme"""
         self.progress_bar.setValue(value)
         self.percentage_label.setText(f"{value}%")
         self.progress_label.setText(text)
         if not self.isVisible():
             self.show()
-    
     def reset(self):
-        """Progress sıfırlama"""
         self.progress_bar.setValue(0)
         self.percentage_label.setText("0%")
         self.hide()
 
-
 class StatusBar(QWidget):
-    """Alt durum çubuğu"""
     def __init__(self):
         super().__init__()
-        layout = QHBoxLayout()
+        layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Sol taraf - ikonlar
-        self.folder_btn = IconButton("📁")
-        self.delete_btn = IconButton("🗑️")
-        
-        # Sağ taraf - durum
+        self.folder_btn = IconButton('folder.svg', 'Open downloads folder')
+        self.delete_btn = IconButton('trash.svg', 'Clear')
         self.status_label = QLabel("Status: Ready")
         self.status_label.setStyleSheet(STATUS_LABEL_STYLE)
         self.status_label.setAlignment(Qt.AlignRight)
-        
         layout.addWidget(self.folder_btn)
         layout.addWidget(self.delete_btn)
         layout.addStretch()
         layout.addWidget(self.status_label)
-        
-        self.setLayout(layout)
-    
     def set_status(self, status):
-        """Durum güncelleme"""
         self.status_label.setText(f"Status: {status}")
+
+class HeaderBar(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName('Header')
+        self.setStyleSheet(HEADER_STYLE)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.title = QLabel("VIGGA")
+        self.title.setObjectName('Title')
+        layout.addWidget(self.title)
+        layout.addStretch()
+        self.close_btn = IconButton('close.svg', 'Close')
+        layout.addWidget(self.close_btn)

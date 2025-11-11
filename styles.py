@@ -1,27 +1,36 @@
 """
 VIGGA - Stil Tanımlamaları
-Modern, glassmorphism tarzı arayüz stilleri
+Modern, glassmorphism tarzı arayüz stilleri + frameless pencere desteği
 """
 
+RADIUS = 20
+FONT_FAMILY = "Segoe UI, Arial"
+
 COLORS = {
-    'background': '#4A3C5C',
-    'surface': '#5C4D6E',
-    'surface_light': '#6B5C7F',
+    'background': '#3F3350',
+    'surface': '#524364',
+    'surface_light': '#615274',
     'primary': '#C9A8FF',
     'primary_dark': '#B491FF',
     'text_primary': '#FFFFFF',
-    'text_secondary': '#D4C4E8',
-    'text_muted': '#9B8AAF',
+    'text_secondary': '#E4DAF3',
+    'text_muted': '#B9AACD',
     'accent': '#E8D4FF',
     'progress': 'qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8B7FFF, stop:1 #C9A8FF)',
-    'shadow': 'rgba(0, 0, 0, 0.3)'
 }
 
 MAIN_WINDOW_STYLE = f"""
     QWidget {{
-        background: {COLORS['background']};
+        background: transparent; /* Frameless için */
         color: {COLORS['text_primary']};
-        font-family: 'Segoe UI', Arial, sans-serif;
+        font-family: {FONT_FAMILY};
+    }}
+"""
+
+CARD_STYLE = f"""
+    QWidget#Card {{
+        background: {COLORS['background']};
+        border-radius: {RADIUS}px;
     }}
 """
 
@@ -97,22 +106,30 @@ BUTTON_STYLE = f"""
     QPushButton:hover {{
         background: {COLORS['primary_dark']};
     }}
-    QPushButton:pressed {{
-        background: {COLORS['primary']};
-    }}
 """
 
 ICON_BUTTON_STYLE = f"""
-    QPushButton {{
+    QToolButton {{
         background: transparent;
         border: none;
         color: {COLORS['text_secondary']};
-        padding: 8px;
+        padding: 6px;
     }}
-    QPushButton:hover {{
-        color: {COLORS['text_primary']};
+    QToolButton:hover {{
         background: {COLORS['surface_light']};
         border-radius: 8px;
+        color: {COLORS['text_primary']};
+    }}
+"""
+
+HEADER_STYLE = f"""
+    QWidget#Header {{
+        background: transparent;
+    }}
+    QLabel#Title {{
+        color: {COLORS['text_primary']};
+        font-size: 16px;
+        font-weight: 700;
     }}
 """
 
