@@ -7,7 +7,7 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
                              QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar)
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from styles import *
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -50,7 +50,7 @@ class IconButton(QToolButton):
         super().__init__()
         self.setStyleSheet(ICON_BUTTON_STYLE)
         self.setIcon(QIcon(icon_path(name)))
-        self.setIconSize(Qt.QSize(18, 18))
+        self.setIconSize(QSize(18, 18))
         self.setToolTip(tooltip)
         self.setCursor(Qt.PointingHandCursor)
 
