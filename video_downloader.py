@@ -4,15 +4,7 @@ yt-dlp ile video indirme fonksiyonları
 """
 
 import yt_dlp
-import logging
 from PyQt5.QtCore import QThread, pyqtSignal
-
-logging.basicConfig(
-    filename='vigga_debug.log',
-    filemode='w',
-    level=logging.DEBUG,
-    format='%(asctime)s [%(levelname)s] %(message)s'
-)
 
 
 class VideoDownloadThread(QThread):
@@ -67,12 +59,12 @@ class VideoDownloadThread(QThread):
                 info = ydl.extract_info(self.url, download=True)
                 title = info.get('title', 'Video')
                 self.finished.emit(f"Downloaded: {title}")
-                logging.info(f"Download completed: {title}")
+                print(f"Download completed: {title}")
         
         except Exception as e:
             error_msg = str(e)
             self.error.emit(error_msg)
-            logging.error(f"Download error: {error_msg}")
+            print(f"Download error: {error_msg}")
 
 
 class VideoInfoFetcher(QThread):
