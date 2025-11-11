@@ -1,6 +1,6 @@
 """
 VIGGA - Ana Uygulama
-Fetch için ince indeterminate bar; hız/MB bilgisi progress satırında
+Format geçişlerinde düzgün çalışan, temiz panel yönetimi
 """
 
 import os
@@ -19,6 +19,8 @@ class ViggaApp(QWidget):
         self.download_thread = None
         self.info_thread = None
         self._drag_pos = None
+        self.current_url = ""
+        self.current_video_info = None
         self.init_window()
         self.init_ui()
 
@@ -82,6 +84,7 @@ class ViggaApp(QWidget):
         self.format_combo = ModernComboBox()
         for fmt in get_available_formats():
             self.format_combo.addItem(fmt)
+        self.format_combo.currentTextChanged.connect(self.on_format_changed)
         card_layout.addWidget(self.format_combo)
 
         resolution_label = QLabel("Resolution")
@@ -110,19 +113,22 @@ class ViggaApp(QWidget):
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
             event.accept()
+    
     def mouseMoveEvent(self, event):
         if self._drag_pos and event.buttons() & Qt.LeftButton:
             self.move(event.globalPos() - self._drag_pos)
             event.accept()
+    
     def mouseReleaseEvent(self, event):
         self._drag_pos = None
 
     def on_url_changed(self, url):
-        if url and len(url) > 10:
+        if url and len(url) > 10 and url != self.current_url:
+            self.current_url = url
             self.status_bar.set_status("Fetching…")
             self.fetch_bar.setRange(0, 0)  # indeterminate
             self.fetch_bar.show()
-            self.spinner.hide()  # URL satırını kapatmasın
+            self.spinner.hide()
             self.info_thread = VideoInfoFetcher(url)
             self.info_thread.info_ready.connect(self.on_info_ready)
             self.info_thread.error.connect(self.on_info_error)
@@ -130,28 +136,60 @@ class ViggaApp(QWidget):
 
     def on_info_ready(self, info):
         self.fetch_bar.hide()
+        self.current_video_info = info
         self.preview.set_video_info(info['title'], info['channel'], info['thumbnail'])
-        self.resolution_combo.set_quality_options(info['quality_options'])
+        self.update_resolution_options()
         self.status_bar.set_status("Ready")
 
     def on_info_error(self, error):
         self.fetch_bar.hide()
         self.status_bar.set_status("Error")
+        self.current_video_info = None
+
+    def on_format_changed(self, format_text):
+        """Format değiştiğinde resolution panelini güncelle"""
+        self.update_resolution_options()
+
+    def update_resolution_options(self):
+        """Seçilen formata göre resolution seçeneklerini güncelle"""
+        if not self.current_video_info:
+            return
+        
+        selected_format = self.format_combo.currentText()
+        
+        # Audio Only seçiliyse resolution'ları gizle
+        if selected_format == "Audio Only (MP3)":
+            self.resolution_combo.clear()
+            self.resolution_combo.addItem("Best Quality")
+            self.resolution_combo.set_quality_options([("Best Quality", "bestaudio")])
+            self.resolution_combo.setEnabled(True)
+        else:
+            # Video formatı - normal resolution listesini göster
+            quality_options = self.current_video_info.get('quality_options', [])
+            # Audio only seçeneğini kaldır
+            video_options = [opt for opt in quality_options if 'Audio Only' not in opt[0]]
+            self.resolution_combo.set_quality_options(video_options)
+            self.resolution_combo.setEnabled(True)
 
     def start_download(self):
         url = self.url_input.text()
         if not url:
             self.status_bar.set_status("Please enter a URL")
             return
+        
         format_id = self.resolution_combo.get_selected_format_id()
         if not format_id:
             self.status_bar.set_status("Select quality")
             return
+        
+        selected_format = self.format_combo.currentText()
+        
         self.download_btn.setEnabled(False)
         self.status_bar.set_status("Downloading")
         self.progress_widget.reset()
         self.progress_widget.show()
-        self.down_thread = VideoDownloadThread(url, format_id)
+        
+        self.down_thread = VideoDownloadThread(url, format_id, selected_format)
         self.down_thread.progress.connect(self.on_progress)
         self.down_thread.finished.connect(self.on_download_finished)
         self.down_thread.error.connect(self.on_download_error)
@@ -159,10 +197,12 @@ class ViggaApp(QWidget):
 
     def on_progress(self, value, text):
         self.progress_widget.update_progress(value, text)
+    
     def on_download_finished(self, message):
         self.status_bar.set_status("Complete")
         self.download_btn.setEnabled(True)
         self.progress_widget.reset()
+    
     def on_download_error(self, error):
         self.status_bar.set_status("Error")
         self.download_btn.setEnabled(True)
@@ -179,10 +219,14 @@ class ViggaApp(QWidget):
             subprocess.Popen(['xdg-open', path])
 
     def clear_all(self):
+        """Tüm alanları temizle - thumbnail dahil"""
         self.url_input.clear()
+        self.current_url = ""
+        self.current_video_info = None
         self.preview.reset()
         self.resolution_combo.clear()
         self.resolution_combo.addItem("Select quality")
+        self.format_combo.setCurrentIndex(0)
         self.progress_widget.reset()
         self.status_bar.set_status("Ready")
 
