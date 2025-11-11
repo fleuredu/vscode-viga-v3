@@ -1,3 +1,5 @@
+# merhaba başardım anne
+
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit
 from PyQt5.QtGui import QFont, QColor, QPalette
