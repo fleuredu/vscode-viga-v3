@@ -25,7 +25,13 @@ def main():
     try:
         run(['git', 'rev-parse', '--is-inside-work-tree'], cwd=repo_root)
         run(['git', 'fetch', '--all', '--prune'], cwd=repo_root)
+        # Stash local changes before pulling
+        run(['git', 'stash', '--include-untracked'], cwd=repo_root)
         run(['git', 'pull', '--rebase', 'origin', 'main'], cwd=repo_root)
+        # Pop the stash if there were changes stashed
+        stash_list = subprocess.run(['git', 'stash', 'list'], cwd=repo_root, env=ENV, stdout=subprocess.PIPE, stderr=DEVNULL)
+        if stash_list.stdout:
+            run(['git', 'stash', 'pop'], cwd=repo_root)
     except subprocess.CalledProcessError:
         print('git_pull: operation failed', file=sys.stderr)
         sys.exit(1)
