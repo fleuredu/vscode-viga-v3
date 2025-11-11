@@ -1,6 +1,6 @@
 """
 VIGGA - Ana Uygulama
-Preview kartı: açıklama gizli, outlinesiz başlık, yalnız kanal adı
+Panel genişlemesini önle: sabit pencere boyutu, URL satırı stretch ayarı
 """
 
 import os
@@ -27,7 +27,8 @@ class ViggaApp(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(MAIN_WINDOW_STYLE + CARD_STYLE)
-        self.resize(480, 780)
+        # Pencere genişlemesini engellemek için sabitle
+        self.setFixedSize(480, 780)
         self.setWindowIcon(QIcon(icon_path('close.svg')))
 
     def init_ui(self):
@@ -51,13 +52,23 @@ class ViggaApp(QWidget):
         self.header.close_btn.clicked.connect(self.close)
         card_layout.addWidget(self.header)
 
+        # URL satırı (input + spinner)
         url_row = QHBoxLayout()
+        url_row.setSpacing(8)
         self.url_input = ModernLineEdit("Paste video URL here")
+        # Genişleme politikasını sınırlıyoruz
+        self.url_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.url_input.textChanged.connect(self.on_url_changed)
-        url_row.addWidget(self.url_input)
+        url_row.addWidget(self.url_input, 1)  # input genişler
+
         self.spinner = LoadingSpinner()
+        self.spinner.setFixedSize(28, 28)     # sabit boy, layout'u bozmasın
         self.spinner.hide()
-        url_row.addWidget(self.spinner)
+        url_row.addWidget(self.spinner, 0)    # spinner genişlemesin
+
+        # Stretch oranlarını sabitle
+        url_row.setStretch(0, 1)
+        url_row.setStretch(1, 0)
         card_layout.addLayout(url_row)
 
         self.preview = VideoPreviewCard()
