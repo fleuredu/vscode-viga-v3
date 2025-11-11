@@ -74,7 +74,6 @@ class VideoPreviewCard(QWidget):
         self.setStyleSheet(PREVIEW_STYLE)
         self.setMinimumHeight(240)
         self._title_full = ''
-        self._desc_full = ''
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -85,28 +84,28 @@ class VideoPreviewCard(QWidget):
         self.thumbnail_label.setStyleSheet('background: transparent;')
         layout.addWidget(self.thumbnail_label)
         
-        # Title (iOS benzeri tipografi)
+        # Title (iOS benzeri tipografi) - outlinesiz
         self.title_label = QLabel('Video preview will appear here')
         self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.title_label.setStyleSheet('font-size: 15px; font-weight: 700; letter-spacing: 0.2px; color: #EDE7F6; background: transparent;')
+        self.title_label.setStyleSheet('font-size: 15px; font-weight: 700; letter-spacing: 0.2px; color: #EDE7F6; background: transparent; border: none;')
         layout.addWidget(self.title_label)
         
-        # Subtitle: kanal adı + kısa açıklama
-        self.subtitle_label = QLabel('')
-        self.subtitle_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.subtitle_label.setStyleSheet('font-size: 12px; color: #B9AACD; background: transparent;')
-        self.subtitle_label.setWordWrap(False)
-        layout.addWidget(self.subtitle_label)
+        # Kanal adı (tek satır, elide)
+        self.channel_label = QLabel('')
+        self.channel_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.channel_label.setStyleSheet('font-size: 12px; color: #B9AACD; background: transparent; border: none;')
+        self.channel_label.setWordWrap(False)
+        layout.addWidget(self.channel_label)
         
         layout.addStretch()
         
         self.network_manager = QNetworkAccessManager()
         self.network_manager.finished.connect(self.on_thumbnail_loaded)
     
-    def set_video_info(self, title, channel, thumbnail_url, description=''):
+    def set_video_info(self, title, channel, thumbnail_url):
         self._title_full = title or ''
-        self._desc_full = (description or '').replace('\n', ' ')
         self._apply_elide()
+        self.channel_label.setText(channel or '')
         
         if thumbnail_url:
             request = QNetworkRequest(QUrl(thumbnail_url))
@@ -128,26 +127,11 @@ class VideoPreviewCard(QWidget):
         fm_title = QFontMetrics(self.title_label.font())
         elided_title = fm_title.elidedText(self._title_full, Qt.ElideRight, max(100, self.width()-32))
         self.title_label.setText(elided_title)
-        
-        # Subtitle: "KANAL • açıklama" tek satır
-        text = self._desc_full
-        if len(text) > 0:
-            text = f"{text}"
-        fm_sub = QFontMetrics(self.subtitle_label.font())
-        prefix = ''
-        if self._title_full:
-            # prefix'i kanal adı ile yap
-            prefix = ''
-        # kanal adı ayrı alan: önce channel, sonra bullet ve açıklama
-        composed = self._desc_full
-        fm_width = max(100, self.width()-32)
-        self.subtitle_label.setText(fm_sub.elidedText(composed, Qt.ElideRight, fm_width))
     
     def reset(self):
         self._title_full = ''
-        self._desc_full = ''
         self.title_label.setText('Video preview will appear here')
-        self.subtitle_label.setText('')
+        self.channel_label.setText('')
         self.thumbnail_label.setPixmap(QPixmap())
 
 class LoadingSpinner(QWidget):

@@ -1,13 +1,13 @@
 """
 VIGGA - Ana Uygulama
-Frameless & yuvarlatılmış panel, akıllı kalite seçici, loading spinner, iOS tarzı preview
+Preview kartı: açıklama gizli, outlinesiz başlık, yalnız kanal adı
 """
 
 import os
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSpacerItem, QSizePolicy, QHBoxLayout
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from ui_components import *
 from video_downloader import VideoDownloadThread, VideoInfoFetcher, get_available_formats
@@ -110,16 +110,12 @@ class ViggaApp(QWidget):
             self.spinner.start()
             self.info_thread = VideoInfoFetcher(url)
             self.info_thread.info_ready.connect(self.on_info_ready)
-            self.info_thread.progress_update.connect(self.on_fetch_progress)
             self.info_thread.error.connect(self.on_info_error)
             self.info_thread.start()
 
-    def on_fetch_progress(self, percent):
-        pass
-
     def on_info_ready(self, info):
         self.spinner.stop()
-        self.preview.set_video_info(info['title'], info['channel'], info['thumbnail'], info.get('description',''))
+        self.preview.set_video_info(info['title'], info['channel'], info['thumbnail'])
         self.resolution_combo.set_quality_options(info['quality_options'])
         self.status_bar.set_status("Ready")
 
