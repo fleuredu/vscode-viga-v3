@@ -22,6 +22,7 @@ def main():
     try:
         run(['git', 'fetch', '--all'], cwd=repo_root)
         run(['git', 'pull', '--rebase', 'origin', 'main'], cwd=repo_root)
+        print('git_pull: başarıyla güncellendi!')
     except subprocess.CalledProcessError:
         # On error, print minimal message to help debugging
         print('git_pull: operation failed', file=sys.stderr)
