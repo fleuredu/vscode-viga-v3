@@ -1,6 +1,6 @@
 """
 VIGGA - Ana Uygulama
-Cancel butonu, format geçişlerinde düzgün çalışan panel yönetimi
+Cancel butonu, indirme sırasında kilitleme ve karartma, kapsül progress bar yazısı
 """
 
 import os
@@ -8,7 +8,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSpacerItem, QSizePolicy, QHBoxLayout, QProgressBar
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QGraphicsOpacityEffect
 from ui_components import *
 from video_downloader import VideoDownloadThread, VideoInfoFetcher, get_available_formats, DOWNLOAD_DIR
 from styles import MAIN_WINDOW_STYLE, CARD_STYLE, COLORS, RADIUS, PROGRESS_STYLE
@@ -148,37 +148,44 @@ class ViggaApp(QWidget):
         self.current_video_info = None
 
     def on_format_changed(self, format_text):
-        """Format değiştiğinde resolution panelini güncelle"""
         self.update_resolution_options()
 
     def update_resolution_options(self):
-        """Seçilen formata göre resolution seçeneklerini güncelle"""
         if not self.current_video_info:
             return
-        
         selected_format = self.format_combo.currentText()
-        
-        # Audio Only seçiliyse resolution'ları gizle
         if selected_format == "Audio Only (MP3)":
             self.resolution_combo.clear()
             self.resolution_combo.addItem("Best Quality")
             self.resolution_combo.set_quality_options([("Best Quality", "bestaudio")])
             self.resolution_combo.setEnabled(True)
         else:
-            # Video formatı - normal resolution listesini göster
             quality_options = self.current_video_info.get('quality_options', [])
-            # Audio only seçeneğini kaldır
             video_options = [opt for opt in quality_options if 'Audio Only' not in opt[0]]
             self.resolution_combo.set_quality_options(video_options)
             self.resolution_combo.setEnabled(True)
 
+    # --- UI kilitle/karart yardımcıları ---
+    def _dim_widget(self, w, dim=True):
+        if dim:
+            eff = QGraphicsOpacityEffect(w)
+            eff.setOpacity(0.5)
+            w.setGraphicsEffect(eff)
+            w.setEnabled(False)
+        else:
+            w.setGraphicsEffect(None)
+            w.setEnabled(True)
+
+    def _set_controls_enabled(self, enabled: bool):
+        # İndirirken URL, format, resolution, Clear butonu kilit
+        widgets = [self.url_input, self.format_combo, self.resolution_combo, self.status_bar.delete_btn]
+        for w in widgets:
+            self._dim_widget(w, dim=not enabled)
+
     def on_download_button_clicked(self):
-        """Download/Cancel butonu tıklandığında"""
         if self.is_downloading:
-            # Cancel durumu
             self.cancel_download()
         else:
-            # Download başlat
             self.start_download()
 
     def start_download(self):
@@ -186,20 +193,19 @@ class ViggaApp(QWidget):
         if not url:
             self.status_bar.set_status("Please enter a URL")
             return
-        
         format_id = self.resolution_combo.get_selected_format_id()
         if not format_id:
             self.status_bar.set_status("Select quality")
             return
-        
         selected_format = self.format_combo.currentText()
-        
+
         self.is_downloading = True
         self.download_btn.setText("Cancel")
+        self._set_controls_enabled(False)
         self.status_bar.set_status("Downloading")
         self.progress_widget.reset()
         self.progress_widget.show()
-        
+
         self.down_thread = VideoDownloadThread(url, format_id, selected_format)
         self.down_thread.progress.connect(self.on_progress)
         self.down_thread.finished.connect(self.on_download_finished)
@@ -207,23 +213,24 @@ class ViggaApp(QWidget):
         self.down_thread.start()
 
     def cancel_download(self):
-        """Indirmeyi iptal et"""
         if self.down_thread and self.down_thread.isRunning():
             self.down_thread.cancel()
             self.status_bar.set_status("Cancelling...")
 
     def on_progress(self, value, text):
         self.progress_widget.update_progress(value, text)
-    
+
     def on_download_finished(self, message):
         self.is_downloading = False
         self.download_btn.setText("Download")
+        self._set_controls_enabled(True)
         self.status_bar.set_status("Complete")
         self.progress_widget.reset()
-    
+
     def on_download_error(self, error):
         self.is_downloading = False
         self.download_btn.setText("Download")
+        self._set_controls_enabled(True)
         if error == 'Cancelled':
             self.status_bar.set_status("Cancelled")
         else:
@@ -240,7 +247,6 @@ class ViggaApp(QWidget):
             subprocess.Popen(['xdg-open', DOWNLOAD_DIR])
 
     def clear_all(self):
-        """Tüm alanları temizle - thumbnail dahil"""
         self.url_input.clear()
         self.current_url = ""
         self.current_video_info = None
