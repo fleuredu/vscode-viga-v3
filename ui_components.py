@@ -1,6 +1,6 @@
 """
 VIGGA - UI Bileşenleri
-Arayüz widget'ları ve bileşenleri (ikonlu, header'lı, spinner'lı, iOS benzeri preview)
+Sabit progress alanı (layout kaymasını engeller)
 """
 
 import os
@@ -32,7 +32,6 @@ class ModernComboBox(QComboBox):
         self.format_ids = []
     
     def set_quality_options(self, options):
-        """(label, format_id) tuple listesi ekle"""
         self.clear()
         self.format_ids = []
         for label, fid in options:
@@ -46,7 +45,6 @@ class ModernComboBox(QComboBox):
         return None
 
 class CoverLabel(QLabel):
-    """Merkez kırpma (center-crop) ile görseli alanı tamamen kaplayan label."""
     def __init__(self):
         super().__init__()
         self._pixmap = None
@@ -59,7 +57,6 @@ class CoverLabel(QLabel):
         self._update_scaled()
     
     def clear_pixmap(self):
-        """Thumbnail'ı tamamen temizle"""
         self._pixmap = None
         self.clear()
     
@@ -84,18 +81,15 @@ class VideoPreviewCard(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
         
-        # Thumbnail (cover fit)
         self.thumbnail_label = CoverLabel()
         self.thumbnail_label.setStyleSheet('background: transparent;')
         layout.addWidget(self.thumbnail_label)
         
-        # Title (iOS benzeri tipografi) - outlinesiz
         self.title_label = QLabel('Video preview will appear here')
         self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.title_label.setStyleSheet('font-size: 15px; font-weight: 700; letter-spacing: 0.2px; color: #EDE7F6; background: transparent; border: none;')
         layout.addWidget(self.title_label)
         
-        # Kanal adı (tek satır, elide)
         self.channel_label = QLabel('')
         self.channel_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.channel_label.setStyleSheet('font-size: 12px; color: #B9AACD; background: transparent; border: none;')
@@ -128,13 +122,11 @@ class VideoPreviewCard(QWidget):
         super().resizeEvent(event)
     
     def _apply_elide(self):
-        # Title tek satır, elide
         fm_title = QFontMetrics(self.title_label.font())
         elided_title = fm_title.elidedText(self._title_full, Qt.ElideRight, max(100, self.width()-32))
         self.title_label.setText(elided_title)
     
     def reset(self):
-        """Preview'ı tamamen sıfırla - thumbnail dahil"""
         self._title_full = ''
         self.title_label.setText('Video preview will appear here')
         self.channel_label.setText('')
@@ -201,7 +193,7 @@ class ProgressWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         info_layout = QHBoxLayout()
-        self.progress_label = QLabel("Downloading...")
+        self.progress_label = QLabel("")
         self.progress_label.setStyleSheet(LABEL_STYLE)
         self.percentage_label = QLabel("0%")
         self.percentage_label.setStyleSheet(LABEL_STYLE)
@@ -215,17 +207,18 @@ class ProgressWidget(QWidget):
         self.progress_bar.setValue(0)
         layout.addLayout(info_layout)
         layout.addWidget(self.progress_bar)
-        self.hide()
-    def update_progress(self, value, text="Downloading..."):
+        # Sabit yükseklik: layout kayması olmaz
+        self.setFixedHeight(68)
+        self.show()
+    def update_progress(self, value, text=""):
         self.progress_bar.setValue(value)
         self.percentage_label.setText(f"{value}%")
         self.progress_label.setText(text)
-        if not self.isVisible():
-            self.show()
     def reset(self):
+        # Yeri sabit tut, içeriği sıfırla
         self.progress_bar.setValue(0)
         self.percentage_label.setText("0%")
-        self.hide()
+        self.progress_label.setText("")
 
 class StatusBar(QWidget):
     def __init__(self):
