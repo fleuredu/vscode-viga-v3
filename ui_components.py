@@ -1,6 +1,6 @@
 """
 VIGGA - UI Bileşenleri
-Sabit pozisyonlu layout, panel kaymaz, preview metin dışarıda, flat combobox fix, progress ince ve elegan; spacing piksel kontrollü, font netliyse bold/okunaklı.
+Metinler ve dropdown padding tam, preview ve spacing uyumlu, Instagram/Pinterest/height olmayan formatlarda da tek seçenek eklenerek çözümle.
 """
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
@@ -28,7 +28,7 @@ class ModernComboBox(QComboBox):
         super().__init__()
         self.setStyleSheet(COMBO_STYLE)
         self.setMinimumHeight(32)
-        self.view().window().setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint) # dropdown düz
+        self.view().setStyleSheet('QListView {padding:5px; font-size:14px;} QListView::item {padding:7px 2px 7px 12px; min-height:22px;}')
         self.setEditable(False)
         self.format_ids = []
     def set_quality_options(self, options):
@@ -73,7 +73,6 @@ class VideoPreviewCard(QWidget):
         contour = QVBoxLayout(self)
         contour.setContentsMargins(0, 0, 0, 0)
         contour.setSpacing(0)
-        # Thumbnail üstte, metin altta
         self.thumbnail_label = CoverLabel()
         self.thumbnail_label.setStyleSheet(PREVIEW_STYLE)
         contour.addWidget(self.thumbnail_label, stretch=0)
