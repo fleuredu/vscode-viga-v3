@@ -1,8 +1,7 @@
 """
 VIGGA - UI Bileşenleri
-Glow/soft stilleri ve tam pastel entegrasyonu ile tamamlanmış.
+Net okunaklı font, spacing ve header-bold kasıldı. ProgressWidgets defaultta gizli, sadece download ile gösterilir.
 """
-
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
                              QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar)
@@ -17,7 +16,6 @@ ICON_DIR = os.path.join(BASE_DIR, 'assets', 'icons')
 def icon_path(name):
     return os.path.join(ICON_DIR, name)
 
-# ... Diğer componentler aynı kalıp sadece style değişti
 class ModernLineEdit(QLineEdit):
     def __init__(self, placeholder=""):
         super().__init__()
@@ -71,7 +69,7 @@ class VideoPreviewCard(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(PREVIEW_STYLE)
-        self.setMinimumHeight(192)
+        self.setMinimumHeight(186)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
@@ -80,11 +78,11 @@ class VideoPreviewCard(QWidget):
         layout.addWidget(self.thumbnail_label)
         self.title_label = QLabel('Video preview will appear here')
         self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.title_label.setStyleSheet(LABEL_STYLE)
+        self.title_label.setStyleSheet(LABEL_STYLE + ' font-size:16px; font-weight:700;')
         layout.addWidget(self.title_label)
         self.channel_label = QLabel('')
         self.channel_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.channel_label.setStyleSheet(LABEL_STYLE.replace('font-size: 13px;', 'font-size: 11px;'))
+        self.channel_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
         self.channel_label.setWordWrap(False)
         layout.addWidget(self.channel_label)
         layout.addStretch()
@@ -108,7 +106,7 @@ class VideoPreviewCard(QWidget):
         super().resizeEvent(event)
     def _apply_elide(self):
         fm_title = QFontMetrics(self.title_label.font())
-        elided_title = fm_title.elidedText(getattr(self, '_title_full', ''), Qt.ElideRight, max(70, self.width()-24))
+        elided_title = fm_title.elidedText(getattr(self, '_title_full', ''), Qt.ElideRight, max(90, self.width()-16))
         self.title_label.setText(elided_title)
     def reset(self):
         self._title_full = ''
@@ -153,7 +151,7 @@ class PrimaryButton(QPushButton):
     def __init__(self, text=""):
         super().__init__(text)
         self.setStyleSheet(BUTTON_STYLE)
-        self.setMinimumHeight(36)
+        self.setMinimumHeight(38)
         self.setCursor(Qt.PointingHandCursor)
 
 class IconButton(QToolButton):
@@ -161,7 +159,7 @@ class IconButton(QToolButton):
         super().__init__()
         self.setStyleSheet(ICON_BUTTON_STYLE)
         self.setIcon(QIcon(icon_path(name)))
-        self.setIconSize(QSize(14, 14))
+        self.setIconSize(QSize(16, 16))
         self.setToolTip(tooltip)
         self.setCursor(Qt.PointingHandCursor)
 
@@ -173,9 +171,9 @@ class ProgressWidget(QWidget):
         layout.setSpacing(5)
         info_layout = QHBoxLayout()
         self.progress_label = QLabel("")
-        self.progress_label.setStyleSheet(LABEL_STYLE)
+        self.progress_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
         self.percentage_label = QLabel("0%")
-        self.percentage_label.setStyleSheet(LABEL_STYLE)
+        self.percentage_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
         self.percentage_label.setAlignment(Qt.AlignRight)
         info_layout.addWidget(self.progress_label)
         info_layout.addWidget(self.percentage_label)
@@ -186,16 +184,19 @@ class ProgressWidget(QWidget):
         self.progress_bar.setValue(0)
         layout.addLayout(info_layout)
         layout.addWidget(self.progress_bar)
-        self.setFixedHeight(54)
-        self.show()
+        self.setFixedHeight(56)
+        self.hide()  # başlangıçta görünmesin
     def update_progress(self, value, text=""):
         self.progress_bar.setValue(value)
         self.percentage_label.setText(f"{value}%")
         self.progress_label.setText(text)
+        if not self.isVisible():
+            self.show()
     def reset(self):
         self.progress_bar.setValue(0)
         self.percentage_label.setText("0%")
         self.progress_label.setText("")
+        self.hide()  # reset ile yine gizle
 
 class StatusBar(QWidget):
     def __init__(self):
