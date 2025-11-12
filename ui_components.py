@@ -1,6 +1,6 @@
 """
 VIGGA - UI Bileşenleri
-Net okunaklı font, spacing ve header-bold kasıldı. ProgressWidgets defaultta gizli, sadece download ile gösterilir.
+Sabit pozisyonlu layout, panel kaymaz, preview metin dışarıda, flat combobox fix, progress ince ve elegan; spacing piksel kontrollü, font netliyse bold/okunaklı.
 """
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QToolButton,
@@ -28,6 +28,8 @@ class ModernComboBox(QComboBox):
         super().__init__()
         self.setStyleSheet(COMBO_STYLE)
         self.setMinimumHeight(32)
+        self.view().window().setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint) # dropdown düz
+        self.setEditable(False)
         self.format_ids = []
     def set_quality_options(self, options):
         self.clear()
@@ -46,8 +48,8 @@ class CoverLabel(QLabel):
         super().__init__()
         self._pixmap = None
         self.setAlignment(Qt.AlignCenter)
-        self.setMinimumHeight(162)
-        self.setMaximumHeight(162)
+        self.setMinimumHeight(144)
+        self.setMaximumHeight(144)
         self.setSizePolicy(self.sizePolicy().Expanding, self.sizePolicy().Fixed)
     def set_pixmap(self, pixmap: QPixmap):
         self._pixmap = pixmap
@@ -68,24 +70,27 @@ class CoverLabel(QLabel):
 class VideoPreviewCard(QWidget):
     def __init__(self):
         super().__init__()
-        self.setStyleSheet(PREVIEW_STYLE)
-        self.setMinimumHeight(186)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        contour = QVBoxLayout(self)
+        contour.setContentsMargins(0, 0, 0, 0)
+        contour.setSpacing(0)
+        # Thumbnail üstte, metin altta
         self.thumbnail_label = CoverLabel()
-        self.thumbnail_label.setStyleSheet('background: transparent;')
-        layout.addWidget(self.thumbnail_label)
-        self.title_label = QLabel('Video preview will appear here')
+        self.thumbnail_label.setStyleSheet(PREVIEW_STYLE)
+        contour.addWidget(self.thumbnail_label, stretch=0)
+        meta_zone = QVBoxLayout()
+        meta_zone.setContentsMargins(4, 6, 4, 4)
+        meta_zone.setSpacing(2)
+        self.title_label = QLabel('Video preview...')
         self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.title_label.setStyleSheet(LABEL_STYLE + ' font-size:16px; font-weight:700;')
-        layout.addWidget(self.title_label)
+        self.title_label.setStyleSheet(LABEL_STYLE + ' font-size:15px; font-weight:bold;')
+        meta_zone.addWidget(self.title_label)
         self.channel_label = QLabel('')
         self.channel_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.channel_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
+        self.channel_label.setStyleSheet(LABEL_STYLE + ' font-size:12px; font-weight:600; color:#BCA6D4;')
         self.channel_label.setWordWrap(False)
-        layout.addWidget(self.channel_label)
-        layout.addStretch()
+        meta_zone.addWidget(self.channel_label)
+        contour.addLayout(meta_zone, stretch=0)
+        contour.addSpacing(2)
         self.network_manager = QNetworkAccessManager()
         self.network_manager.finished.connect(self.on_thumbnail_loaded)
     def set_video_info(self, title, channel, thumbnail_url):
@@ -106,18 +111,18 @@ class VideoPreviewCard(QWidget):
         super().resizeEvent(event)
     def _apply_elide(self):
         fm_title = QFontMetrics(self.title_label.font())
-        elided_title = fm_title.elidedText(getattr(self, '_title_full', ''), Qt.ElideRight, max(90, self.width()-16))
+        elided_title = fm_title.elidedText(getattr(self, '_title_full', ''), Qt.ElideRight, max(108, self.width()-12))
         self.title_label.setText(elided_title)
     def reset(self):
         self._title_full = ''
-        self.title_label.setText('Video preview will appear here')
+        self.title_label.setText('Video preview...')
         self.channel_label.setText('')
         self.thumbnail_label.clear_pixmap()
 
 class LoadingSpinner(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(30, 30)
+        self.setFixedSize(28, 28)
         self._angle = 0
         self.animation = QPropertyAnimation(self, b"angle")
         self.animation.setStartValue(0)
@@ -140,7 +145,7 @@ class LoadingSpinner(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.translate(15, 15)
+        painter.translate(14, 14)
         painter.rotate(self._angle)
         from PyQt5.QtGui import QPen, QColor
         pen = QPen(QColor(COLORS['primary']), 2, Qt.SolidLine, Qt.RoundCap)
@@ -159,44 +164,51 @@ class IconButton(QToolButton):
         super().__init__()
         self.setStyleSheet(ICON_BUTTON_STYLE)
         self.setIcon(QIcon(icon_path(name)))
-        self.setIconSize(QSize(16, 16))
+        self.setIconSize(QSize(15, 15))
         self.setToolTip(tooltip)
         self.setCursor(Qt.PointingHandCursor)
 
 class ProgressWidget(QWidget):
-    def __init__(self):
+    def __init__(self, slim=False):
         super().__init__()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(5)
+        layout.setSpacing(5 if not slim else 0)
         info_layout = QHBoxLayout()
-        self.progress_label = QLabel("")
-        self.progress_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
-        self.percentage_label = QLabel("0%")
-        self.percentage_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
-        self.percentage_label.setAlignment(Qt.AlignRight)
-        info_layout.addWidget(self.progress_label)
-        info_layout.addWidget(self.percentage_label)
+        if not slim:
+            self.progress_label = QLabel("")
+            self.progress_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
+            self.percentage_label = QLabel("0%")
+            self.percentage_label.setStyleSheet(LABEL_STYLE + ' font-size:13px;')
+            self.percentage_label.setAlignment(Qt.AlignRight)
+            info_layout.addWidget(self.progress_label)
+            info_layout.addWidget(self.percentage_label)
+        else:
+            self.progress_label = None
+            self.percentage_label = None
         self.progress_bar = QProgressBar()
-        self.progress_bar.setStyleSheet(PROGRESS_STYLE)
+        style = PROGRESS_STYLE
+        if slim:
+            style = style.replace('height: 11px;', 'height: 3px;').replace('border-radius: 8px;', 'border-radius: 4px;').replace('border-radius: 7px;', 'border-radius: 3px;')
+        self.progress_bar.setStyleSheet(style)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
-        layout.addLayout(info_layout)
+        if not slim:
+            layout.addLayout(info_layout)
         layout.addWidget(self.progress_bar)
-        self.setFixedHeight(56)
-        self.hide()  # başlangıçta görünmesin
+        self.setFixedHeight(56 if not slim else 12)
+        self.hide()
     def update_progress(self, value, text=""):
         self.progress_bar.setValue(value)
-        self.percentage_label.setText(f"{value}%")
-        self.progress_label.setText(text)
-        if not self.isVisible():
-            self.show()
+        if self.percentage_label: self.percentage_label.setText(f"{value}%")
+        if self.progress_label: self.progress_label.setText(text)
+        if not self.isVisible(): self.show()
     def reset(self):
         self.progress_bar.setValue(0)
-        self.percentage_label.setText("0%")
-        self.progress_label.setText("")
-        self.hide()  # reset ile yine gizle
+        if self.percentage_label: self.percentage_label.setText("0%")
+        if self.progress_label: self.progress_label.setText("")
+        self.hide()
 
 class StatusBar(QWidget):
     def __init__(self):
