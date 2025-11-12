@@ -1,11 +1,13 @@
 """
 VIGGA - Video İndirme Modülü
-Cancel desteği, downloads klasörü, resolution deduplikasyonu, audio-only desteği ve format yönetimi
+Cancel temizliği (.part/.ytdl), downloads klasörü, resolution deduplikasyonu, audio-only ve hız/MB etiketi
 """
 
 import os
-import yt_dlp
 import threading
+import glob
+import yt_dlp
+from yt_dlp.utils import DownloadCancelled
 from PyQt5.QtCore import QThread, pyqtSignal
 
 
@@ -34,6 +36,7 @@ def _fps_label(fps):
 DOWNLOAD_DIR = os.path.join(os.path.dirname(__file__), 'downloads')
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
+
 class VideoDownloadThread(QThread):
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(str)
@@ -45,30 +48,70 @@ class VideoDownloadThread(QThread):
         self.format_id = format_id
         self.download_format = download_format
         self._cancel_event = threading.Event()
-        self._current_file = None
+        self._cleanup_candidates = set()
 
     def cancel(self):
         """İndirmeyi iptal et"""
         self._cancel_event.set()
 
+    def _register_candidate(self, path):
+        if path:
+            self._cleanup_candidates.add(path)
+
+    def _cleanup_related_files(self):
+        """Yarım kalan .part/.ytdl ve geçici dosyaları temizle"""
+        try:
+            for path in list(self._cleanup_candidates):
+                for candidate in {path, path + '.part', path + '.ytdl'}:
+                    if os.path.isfile(candidate):
+                        try:
+                            os.remove(candidate)
+                        except Exception:
+                            pass
+                # Ek olarak aynı isimli .part varyasyonlarını sil
+                base = path.replace('.ytdl', '').replace('.part', '')
+                for p in glob.glob(base + '.part*'):
+                    try:
+                        if os.path.isfile(p):
+                            os.remove(p)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
     # yt-dlp progress hook
     def progress_hook(self, d):
+        # Cancel kontrolünü en başta yap
+        if self._cancel_event.is_set():
+            raise DownloadCancelled('Cancelled by user')
         try:
-            if self._cancel_event.is_set():
-                raise Exception('CANCELLED')
             status = d.get('status')
-            self._current_file = d.get('filename', self._current_file)
+            filename = d.get('filename')
+            tmpfilename = d.get('tmpfilename')
+            self._register_candidate(filename)
+            self._register_candidate(tmpfilename)
+
             downloaded = d.get('downloaded_bytes') or 0
             total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
             speed = d.get('speed') or 0
+
             if status == 'downloading' and total:
-                pct = int(downloaded * 100 / total)
-                label = f"Downloading… {_human_bytes(speed)}/s • {_human_bytes(downloaded)}/{_human_bytes(total)}"
+                pct = int(downloaded * 100 / total) if total else 0
+                # "23.3/60MB (1.2MB/s)" formatı
+                def _mb(x):
+                    try:
+                        return x / 1024.0 / 1024.0
+                    except Exception:
+                        return 0.0
+                label = f"{_mb(downloaded):.1f}/{_mb(total):.0f}MB ({_human_bytes(speed)}/s)"
                 self.progress.emit(pct, label)
             elif status == 'finished':
                 self.progress.emit(100, 'Processing…')
-        except Exception as e:
-            raise e
+        except DownloadCancelled:
+            # Yukarıya propagate
+            raise
+        except Exception:
+            pass
 
     def run(self):
         try:
@@ -86,6 +129,7 @@ class VideoDownloadThread(QThread):
                         'preferredcodec': 'mp3',
                         'preferredquality': '192',
                     }],
+                    'continuedl': False,
                 }
             else:
                 merge_format = 'mp4'
@@ -100,25 +144,20 @@ class VideoDownloadThread(QThread):
                     'progress_hooks': [self.progress_hook],
                     'format': f"{self.format_id}+bestaudio/best",
                     'merge_output_format': merge_format,
+                    'continuedl': False,
                 }
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                try:
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(self.url, download=True)
-                    if self._cancel_event.is_set():
-                        raise Exception('CANCELLED')
-                    self.finished.emit(f"Downloaded: {info.get('title','Video')}")
-                except Exception as e:
-                    if str(e) == 'CANCELLED':
-                        # Sil kısmen inmiş dosya
-                        if self._current_file and os.path.exists(self._current_file):
-                            try:
-                                os.remove(self._current_file)
-                            except Exception:
-                                pass
-                        self.error.emit('Cancelled')
-                    else:
-                        raise
+                # Cancel edilmediyse başarı kabul
+                self.finished.emit(f"Downloaded: {info.get('title','Video')}")
+            except DownloadCancelled:
+                # Temizlik ve iptal bildirimi
+                self._cleanup_related_files()
+                self.error.emit('Cancelled')
+            except Exception as e:
+                self.error.emit(str(e))
         except Exception as e:
             self.error.emit(str(e))
 
