@@ -1,13 +1,13 @@
 """
 VIGGA - Stil Tanımlamaları
-Soft glow, round komponent, pastel/text-shadow ve hover efektleri entegre edildi.
+Tüm hatalı/uyumsuz CSS kaldırıldı. Soft mor arka plan, round butonlar, text için okunaklı font ve bold header, spacing optimize. box-shadow ve transition yok, pastel ve kontrastlar uyumlu.
 """
 
-RADIUS = 18
-FONT_FAMILY = "Segoe UI, Arial"
+RADIUS = 15
+FONT_FAMILY = "Segoe UI, Arial, Helvetica, sans-serif"
 
 COLORS = {
-    'background': '#362A42',  # Daha soft, çok koyu olmayan mor
+    'background': '#362A42',
     'surface': '#4D3A5D',
     'surface_light': '#65507C',
     'primary': '#C9A8FF',
@@ -16,7 +16,6 @@ COLORS = {
     'text_secondary': '#E9DEF9',
     'text_muted': '#BCA6D4',
     'accent': '#E8D4FF',
-    'glow': '0 0 16px #C9A8FF77',
     'progress': 'qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #A185FF, stop:1 #EBCFFF)',
 }
 
@@ -32,7 +31,6 @@ CARD_STYLE = f"""
     QWidget#Card {{
         background: {COLORS['background']};
         border-radius: {RADIUS}px;
-        box-shadow: {COLORS['glow']};
     }}
 """
 
@@ -40,17 +38,14 @@ URL_INPUT_STYLE = f"""
     QLineEdit {{
         background: {COLORS['surface_light']};
         border: 2px solid {COLORS['primary']};
-        border-radius: 15px;
-        padding: 9px 16px;
+        border-radius: 13px;
+        padding: 10px 15px;
         color: {COLORS['text_primary']};
-        font-size: 13px;
-        box-shadow: {COLORS['glow']};
-        transition: box-shadow 0.3s, border 0.3s;
+        font-size: 14px;
     }}
     QLineEdit:focus {{
         border: 2px solid {COLORS['accent']};
         background: {COLORS['surface']};
-        box-shadow: 0 0 24px #E8D4FF55;
     }}
 """
 
@@ -58,10 +53,9 @@ PREVIEW_STYLE = f"""
     QLabel {{
         background: {COLORS['surface']};
         border: 2px solid {COLORS['surface_light']};
-        border-radius: 14px;
+        border-radius: 12px;
         color: {COLORS['text_muted']};
         font-size: 14px;
-        box-shadow: {COLORS['glow']};
     }}
 """
 
@@ -69,17 +63,14 @@ COMBO_STYLE = f"""
     QComboBox {{
         background: {COLORS['surface_light']};
         border: 2px solid {COLORS['primary']};
-        border-radius: 15px;
+        border-radius: 13px;
         padding: 8px 16px;
         color: {COLORS['text_primary']};
-        font-size: 13px;
-        box-shadow: {COLORS['glow']};
-        transition: box-shadow 0.3s, border 0.25s;
+        font-size: 14px;
     }}
     QComboBox:hover {{
         background: {COLORS['surface']};
         border: 2px solid {COLORS['primary_dark']};
-        box-shadow: 0 0 18px #B491FF55;
     }}
     QComboBox::drop-down {{
         border: none;
@@ -95,11 +86,10 @@ COMBO_STYLE = f"""
     QComboBox QAbstractItemView {{
         background: {COLORS['surface_light']};
         border: 2px solid {COLORS['primary']};
-        border-radius: 10px;
+        border-radius: 9px;
         selection-background-color: {COLORS['accent']};
         color: {COLORS['text_primary']};
         padding: 3px;
-        box-shadow: {COLORS['glow']};
     }}
 """
 
@@ -107,23 +97,20 @@ BUTTON_STYLE = f"""
     QPushButton {{
         background: {COLORS['primary']};
         border: none;
-        border-radius: 16px;
-        padding: 12px;
+        border-radius: 14px;
+        padding: 10px;
         color: {COLORS['text_primary']};
         font-size: 15px;
-        font-weight: bold;
-        box-shadow: {COLORS['glow']};
-        text-shadow: 0 1px 4px #fff2, 0 0 8px {COLORS['primary_dark']};
-        transition: background 0.16s, box-shadow 0.25s;
+        font-family: {FONT_FAMILY};
+        font-weight: 600;
+        letter-spacing: 0.2px;
     }}
     QPushButton:hover {{
         background: {COLORS['primary_dark']};
-        box-shadow: 0 0 24px #C9A8FFF7;
     }}
     QPushButton:pressed {{
         background: {COLORS['accent']};
         color: {COLORS['primary_dark']};
-        box-shadow: 0 2px 8px #E8D4FFbb;
     }}
 """
 
@@ -132,15 +119,13 @@ ICON_BUTTON_STYLE = f"""
         background: transparent;
         border: none;
         color: {COLORS['text_secondary']};
-        padding: 5px;
+        padding: 4px;
         border-radius: 2px;
-        box-shadow: none;
     }}
     QToolButton:hover {{
         background: {COLORS['accent']};
-        border-radius: 8px;
+        border-radius: 7px;
         color: {COLORS['primary']};
-        box-shadow: 0 0 10px #E8D4FF66;
     }}
 """
 
@@ -148,28 +133,26 @@ HEADER_STYLE = f"""
     QWidget#Header {{ background: transparent; }}
     QLabel#Title {{
         color: {COLORS['text_primary']};
-        font-size: 17px;
-        font-weight: 700;
-        text-shadow: 0 1px 6px #fff4, 0 0 22px #B491FF99;
+        font-size: 18px;
+        font-family: {FONT_FAMILY};
+        font-weight: 900;
+        letter-spacing: 0.2px;
     }}
 """
 
-# Yuvarlak progress bar ve glow
 PROGRESS_STYLE = f"""
     QProgressBar {{
         background: {COLORS['surface_light']};
         border: none;
-        border-radius: 12px;
+        border-radius: 8px;
         height: 11px;
         padding: 2px;
         text-align: center;
-        box-shadow: {COLORS['glow']};
     }}
     QProgressBar::chunk {{
         background: {COLORS['progress']};
-        border-radius: 11px;
+        border-radius: 7px;
         margin: 0px;
-        box-shadow: 0 0 6px #fff2;
     }}
 """
 
@@ -178,16 +161,17 @@ STATUS_LABEL_STYLE = f"""
         color: {COLORS['text_secondary']};
         font-size: 12px;
         background: transparent;
-        text-shadow: 0 0 7px #fff9, 0 0 10px #B491FF55;
+        font-family: {FONT_FAMILY};
     }}
 """
 
 LABEL_STYLE = f"""
     QLabel {{
         color: {COLORS['text_primary']};
-        font-size: 13px;
-        font-weight: 500;
+        font-size: 14px;
+        font-weight: 600;
+        font-family: {FONT_FAMILY};
+        letter-spacing: 0.1px;
         background: transparent;
-        text-shadow: 0 1px 4px #fff3, 0 0 4px #C9A8FF22;
     }}
 """
