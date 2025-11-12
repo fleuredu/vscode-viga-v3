@@ -1,6 +1,6 @@
 """
 VIGGA - UI Bileşenleri
-Sabit progress alanı (layout kaymasını engeller)
+Progress bar düz Köşe, Progress konum değişti, video preview 16:9 oran sabit, panel %30 küçültülmüş
 """
 
 import os
@@ -22,13 +22,13 @@ class ModernLineEdit(QLineEdit):
         super().__init__()
         self.setPlaceholderText(placeholder)
         self.setStyleSheet(URL_INPUT_STYLE)
-        self.setMinimumHeight(45)
+        self.setMinimumHeight(32)
 
 class ModernComboBox(QComboBox):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(COMBO_STYLE)
-        self.setMinimumHeight(45)
+        self.setMinimumHeight(32)
         self.format_ids = []
     
     def set_quality_options(self, options):
@@ -49,83 +49,71 @@ class CoverLabel(QLabel):
         super().__init__()
         self._pixmap = None
         self.setAlignment(Qt.AlignCenter)
-        self.setMinimumHeight(160)
+        # 16:9 aspect sabit yükseklik = panel genişliği * 9 / 16
+        self.setMinimumHeight(162)
+        self.setMaximumHeight(162)
         self.setSizePolicy(self.sizePolicy().Expanding, self.sizePolicy().Fixed)
-    
     def set_pixmap(self, pixmap: QPixmap):
         self._pixmap = pixmap
         self._update_scaled()
-    
     def clear_pixmap(self):
         self._pixmap = None
         self.clear()
-    
     def resizeEvent(self, event):
         self._update_scaled()
         super().resizeEvent(event)
-    
     def _update_scaled(self):
         if not self._pixmap or self.width() <= 0 or self.height() <= 0:
             return
-        scaled = self._pixmap.scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        # 16:9 center fit
+        target = QSize(self.width(), self.height())
+        scaled = self._pixmap.scaled(target, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
         self.setPixmap(scaled)
 
 class VideoPreviewCard(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(PREVIEW_STYLE)
-        self.setMinimumHeight(240)
-        self._title_full = ''
-        
+        self.setMinimumHeight(192)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
-        
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
+        # Thumbnail
         self.thumbnail_label = CoverLabel()
         self.thumbnail_label.setStyleSheet('background: transparent;')
         layout.addWidget(self.thumbnail_label)
-        
         self.title_label = QLabel('Video preview will appear here')
         self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.title_label.setStyleSheet('font-size: 15px; font-weight: 700; letter-spacing: 0.2px; color: #EDE7F6; background: transparent; border: none;')
+        self.title_label.setStyleSheet('font-size: 12px; font-weight: 700; color: #EDE7F6; background: transparent; border: none;')
         layout.addWidget(self.title_label)
-        
         self.channel_label = QLabel('')
         self.channel_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.channel_label.setStyleSheet('font-size: 12px; color: #B9AACD; background: transparent; border: none;')
+        self.channel_label.setStyleSheet('font-size: 11px; color: #B9AACD; background: transparent; border: none;')
         self.channel_label.setWordWrap(False)
         layout.addWidget(self.channel_label)
-        
         layout.addStretch()
-        
         self.network_manager = QNetworkAccessManager()
         self.network_manager.finished.connect(self.on_thumbnail_loaded)
-    
     def set_video_info(self, title, channel, thumbnail_url):
         self._title_full = title or ''
         self._apply_elide()
         self.channel_label.setText(channel or '')
-        
         if thumbnail_url:
             request = QNetworkRequest(QUrl(thumbnail_url))
             self.network_manager.get(request)
-    
     def on_thumbnail_loaded(self, reply):
         if reply.error() == QNetworkReply.NoError:
             pixmap = QPixmap()
             pixmap.loadFromData(reply.readAll())
             self.thumbnail_label.set_pixmap(pixmap)
         reply.deleteLater()
-    
     def resizeEvent(self, event):
         self._apply_elide()
         super().resizeEvent(event)
-    
     def _apply_elide(self):
         fm_title = QFontMetrics(self.title_label.font())
-        elided_title = fm_title.elidedText(self._title_full, Qt.ElideRight, max(100, self.width()-32))
+        elided_title = fm_title.elidedText(getattr(self, '_title_full', ''), Qt.ElideRight, max(70, self.width()-24))
         self.title_label.setText(elided_title)
-    
     def reset(self):
         self._title_full = ''
         self.title_label.setText('Video preview will appear here')
@@ -135,46 +123,41 @@ class VideoPreviewCard(QWidget):
 class LoadingSpinner(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(40, 40)
+        self.setFixedSize(30, 30)
         self._angle = 0
         self.animation = QPropertyAnimation(self, b"angle")
         self.animation.setStartValue(0)
         self.animation.setEndValue(360)
         self.animation.setLoopCount(-1)
         self.animation.setDuration(1000)
-    
     @pyqtProperty(int)
     def angle(self):
         return self._angle
-    
     @angle.setter
     def angle(self, value):
         self._angle = value
         self.update()
-    
     def start(self):
         self.animation.start()
         self.show()
-    
     def stop(self):
         self.animation.stop()
         self.hide()
-    
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.translate(20, 20)
+        painter.translate(15, 15)
         painter.rotate(self._angle)
         from PyQt5.QtGui import QPen, QColor
-        pen = QPen(QColor('#C9A8FF'), 3, Qt.SolidLine, Qt.RoundCap)
+        pen = QPen(QColor('#C9A8FF'), 2, Qt.SolidLine, Qt.RoundCap)
         painter.setPen(pen)
-        painter.drawArc(-15, -15, 30, 30, 0, 270 * 16)
+        painter.drawArc(-10, -10, 20, 20, 0, 270 * 16)
 
 class PrimaryButton(QPushButton):
     def __init__(self, text=""):
         super().__init__(text)
         self.setStyleSheet(BUTTON_STYLE)
-        self.setMinimumHeight(50)
+        self.setMinimumHeight(36)
         self.setCursor(Qt.PointingHandCursor)
 
 class IconButton(QToolButton):
@@ -182,7 +165,7 @@ class IconButton(QToolButton):
         super().__init__()
         self.setStyleSheet(ICON_BUTTON_STYLE)
         self.setIcon(QIcon(icon_path(name)))
-        self.setIconSize(QSize(18, 18))
+        self.setIconSize(QSize(14, 14))
         self.setToolTip(tooltip)
         self.setCursor(Qt.PointingHandCursor)
 
@@ -191,7 +174,7 @@ class ProgressWidget(QWidget):
         super().__init__()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(5)
         info_layout = QHBoxLayout()
         self.progress_label = QLabel("")
         self.progress_label.setStyleSheet(LABEL_STYLE)
@@ -201,21 +184,19 @@ class ProgressWidget(QWidget):
         info_layout.addWidget(self.progress_label)
         info_layout.addWidget(self.percentage_label)
         self.progress_bar = QProgressBar()
-        self.progress_bar.setStyleSheet(PROGRESS_STYLE)
+        self.progress_bar.setStyleSheet(PROGRESS_STYLE.replace('border-radius: 12px;', 'border-radius: 0px;').replace('border-radius: 10px;', 'border-radius: 0px;'))
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
         layout.addLayout(info_layout)
         layout.addWidget(self.progress_bar)
-        # Sabit yükseklik: layout kayması olmaz
-        self.setFixedHeight(68)
+        self.setFixedHeight(54)
         self.show()
     def update_progress(self, value, text=""):
         self.progress_bar.setValue(value)
         self.percentage_label.setText(f"{value}%")
         self.progress_label.setText(text)
     def reset(self):
-        # Yeri sabit tut, içeriği sıfırla
         self.progress_bar.setValue(0)
         self.percentage_label.setText("0%")
         self.progress_label.setText("")
