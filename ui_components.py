@@ -1,6 +1,6 @@
 """
 VIGGA - UI Bileşenleri
-Progress bar düz Köşe, Progress konum değişti, video preview 16:9 oran sabit, panel %30 küçültülmüş
+Glow/soft stilleri ve tam pastel entegrasyonu ile tamamlanmış.
 """
 
 import os
@@ -17,6 +17,7 @@ ICON_DIR = os.path.join(BASE_DIR, 'assets', 'icons')
 def icon_path(name):
     return os.path.join(ICON_DIR, name)
 
+# ... Diğer componentler aynı kalıp sadece style değişti
 class ModernLineEdit(QLineEdit):
     def __init__(self, placeholder=""):
         super().__init__()
@@ -30,14 +31,12 @@ class ModernComboBox(QComboBox):
         self.setStyleSheet(COMBO_STYLE)
         self.setMinimumHeight(32)
         self.format_ids = []
-    
     def set_quality_options(self, options):
         self.clear()
         self.format_ids = []
         for label, fid in options:
             self.addItem(label)
             self.format_ids.append(fid)
-    
     def get_selected_format_id(self):
         idx = self.currentIndex()
         if 0 <= idx < len(self.format_ids):
@@ -49,7 +48,6 @@ class CoverLabel(QLabel):
         super().__init__()
         self._pixmap = None
         self.setAlignment(Qt.AlignCenter)
-        # 16:9 aspect sabit yükseklik = panel genişliği * 9 / 16
         self.setMinimumHeight(162)
         self.setMaximumHeight(162)
         self.setSizePolicy(self.sizePolicy().Expanding, self.sizePolicy().Fixed)
@@ -65,7 +63,6 @@ class CoverLabel(QLabel):
     def _update_scaled(self):
         if not self._pixmap or self.width() <= 0 or self.height() <= 0:
             return
-        # 16:9 center fit
         target = QSize(self.width(), self.height())
         scaled = self._pixmap.scaled(target, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
         self.setPixmap(scaled)
@@ -78,17 +75,16 @@ class VideoPreviewCard(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
-        # Thumbnail
         self.thumbnail_label = CoverLabel()
         self.thumbnail_label.setStyleSheet('background: transparent;')
         layout.addWidget(self.thumbnail_label)
         self.title_label = QLabel('Video preview will appear here')
         self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.title_label.setStyleSheet('font-size: 12px; font-weight: 700; color: #EDE7F6; background: transparent; border: none;')
+        self.title_label.setStyleSheet(LABEL_STYLE)
         layout.addWidget(self.title_label)
         self.channel_label = QLabel('')
         self.channel_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.channel_label.setStyleSheet('font-size: 11px; color: #B9AACD; background: transparent; border: none;')
+        self.channel_label.setStyleSheet(LABEL_STYLE.replace('font-size: 13px;', 'font-size: 11px;'))
         self.channel_label.setWordWrap(False)
         layout.addWidget(self.channel_label)
         layout.addStretch()
@@ -149,7 +145,7 @@ class LoadingSpinner(QWidget):
         painter.translate(15, 15)
         painter.rotate(self._angle)
         from PyQt5.QtGui import QPen, QColor
-        pen = QPen(QColor('#C9A8FF'), 2, Qt.SolidLine, Qt.RoundCap)
+        pen = QPen(QColor(COLORS['primary']), 2, Qt.SolidLine, Qt.RoundCap)
         painter.setPen(pen)
         painter.drawArc(-10, -10, 20, 20, 0, 270 * 16)
 
@@ -184,7 +180,7 @@ class ProgressWidget(QWidget):
         info_layout.addWidget(self.progress_label)
         info_layout.addWidget(self.percentage_label)
         self.progress_bar = QProgressBar()
-        self.progress_bar.setStyleSheet(PROGRESS_STYLE.replace('border-radius: 12px;', 'border-radius: 0px;').replace('border-radius: 10px;', 'border-radius: 0px;'))
+        self.progress_bar.setStyleSheet(PROGRESS_STYLE)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
